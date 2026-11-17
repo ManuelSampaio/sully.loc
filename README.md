@@ -1,6 +1,6 @@
 # sully.loc · o nosso lugar
 
-Um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScript, sem build nem dependências locais.
+Sully: um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScript, sem build nem dependências locais.
 
 ## Versão 0.3
 
@@ -49,3 +49,10 @@ Verificação em navegador Chromium com áreas de 390×844 e 360×800, sem trans
 O esquema v0.3 usa `profiles/{uid}` e `pairs/{convite}/…`. As coleções da v0.1 não são migradas nem apagadas; ficam inacessíveis pelas novas regras. A configuração antiga com UIDs fixos deixa de se aplicar.
 
 MANUEL SAMPAIO01
+
+
+## Carregamento e rede (versão 0.3 mantida)
+
+Nome apresentado corrigido para Sully. O carregamento inicial, o login, o registo, a gravação do perfil e a ligação por convite usam um indicador em forma de S. Envios pendentes e recuperação de rede usam o S pequeno no estado da ligação; sem rede, aparece tracejado, sem bloquear a demonstração. A animação respeita a preferência de movimento reduzido.
+
+Uma operação demorada permite ocultar o indicador enquanto aguarda. Os ecrãs de conta continuam a informar quando o serviço real não está configurado; a demonstração não cria contas.
