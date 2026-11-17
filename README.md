@@ -2,7 +2,7 @@
 
 Um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScript, sem build nem dependências locais.
 
-## Versão 0.1
+## Versão 0.2
 
 - Check-in de humor de manhã, tarde e noite, com frase opcional e atualização do mesmo período.
 - Estados disponível, ocupado/a, dormir e sesta temporizada.
@@ -31,5 +31,13 @@ Abrir `http://localhost:3000`. Para publicar no GitHub Pages e ligar os dois, se
 - O modo online apresenta as 150 mensagens e 180 check-ins mais recentes. Os documentos anteriores continuam no Firebase.
 - Dados offline privados só são persistidos após a escolha de dispositivo de confiança. Sair limpa a cache Firestore; fechar outros separadores pode ser necessário.
 - A integração online e as regras precisam de validação com as duas contas num projeto Firebase real antes de usar dados pessoais. Não foi criada infraestrutura Firebase neste repositório.
+
+## Ajustes da versão 0.2
+
+Interface inicial reduzida a estado do par, estado pessoal, humor e mensagens rápidas. Três destinos na navegação: Hoje, Conversa e Ajustes. Desenhos ficam na conversa e o histórico tem acesso no ecrã Hoje; água e lembretes ficam em Ajustes.
+
+Inclui ícones PNG 192/512 e apple-touch-icon 180, campos de texto com 16 px para evitar zoom automático no iPhone, margens seguras e altura da conversa adaptada à área visível.
+
+Verificação em navegador Chromium com áreas de 390×844 e 360×800, sem transbordamento horizontal; navegação, chat e contador de água exercitados. Isto não constitui teste físico em iOS/Safari ou Android/Chrome. A sincronização entre dispositivos continua pendente da configuração Firebase.
 
 MANUEL SAMPAIO01

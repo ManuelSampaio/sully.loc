@@ -33,7 +33,7 @@ O objeto Firebase de configuração Web é público por natureza. As regras do F
 
 ## 4. Instalação e avisos
 
-Usar «Adicionar ao ecrã principal» no navegador. O manifest inclui um ícone SVG; alguns dispositivos podem usar um ícone genérico até serem adicionados ícones PNG dedicados.
+Usar «Adicionar ao ecrã principal» no navegador. O manifest inclui ícones PNG de 192 e 512 px e um apple-touch-icon de 180 px para o iPhone.
 
 Ativar avisos em Ajustes é opcional. Os lembretes de água são pessoais neste dispositivo. O outro pode enviar um carinho sobre água, mas não alterar o teu contador.
 
@@ -44,3 +44,14 @@ Ativar avisos em Ajustes é opcional. Os lembretes de água são pessoais neste 
 - [Firebase Web via CDN](https://firebase.google.com/docs/web/alt-setup)
 - [Persistência offline do Firestore](https://firebase.google.com/docs/firestore/manage-data/enable-offline)
 - [Regras de segurança do Firestore](https://firebase.google.com/docs/firestore/security/get-started)
+
+
+## Teste nos dois telemóveis
+
+Antes do Firebase, cada telemóvel pode testar a interface local, mas não vê o que foi enviado no outro. Depois de configurar as duas contas:
+
+1. Abrir o endereço publicado no Safari do iPhone e no Chrome do Android. Entrar com uma conta diferente em cada um.
+2. Confirmar mensagem de ida e volta, humor, estado e desenho. Não trocar perfis de demonstração para este teste real.
+3. Negar a localização num aparelho e continuar a conversar; no outro, partilhar uma posição apenas se quiserem.
+4. Instalar no ecrã principal e voltar a abrir. Verificar teclado, escrita, botão Enviar e navegação.
+5. Testar sem rede e depois voltar a ligar. Verificar sincronização. Avisos com o site fechado ainda não são suportados nesta versão.
