@@ -1,6 +1,5 @@
-// Configuração pública da aplicação. Nunca colocar service accounts ou chaves privadas aqui.
+// Configuração Web pública do Firebase. Nunca colocar chaves de administração aqui.
 export const cloudConfig = {
   enabled: false,
-  firebase: { apiKey: '', authDomain: '', projectId: '', appId: '' },
-  members: [{ uid: 'UID_MANUEL', name: 'Manuel' }, { uid: 'UID_PAR', name: 'O meu par' }]
+  firebase: { apiKey: '', authDomain: '', projectId: '', appId: '' }
 };

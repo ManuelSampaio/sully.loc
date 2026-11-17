@@ -1,0 +1,22 @@
+import {before,after,beforeEach,test} from 'node:test';
+import {readFile} from 'node:fs/promises';
+import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
+import {doc,setDoc,getDoc,getDocs,collection,updateDoc,writeBatch,runTransaction} from 'firebase/firestore';
+let env;
+const code='0123456789abcdef0123456789abcdef';
+const profile=(uid,sharing={mood:false,status:false,location:false})=>({id:uid,name:uid,pairId:'',sharing,ts:1});
+const db=uid=>env.authenticatedContext(uid).firestore();
+async function register(uid){const store=db(uid);await setDoc(doc(store,'profiles',uid),profile(uid));return store;}
+async function invite(store,uid){const batch=writeBatch(store);batch.set(doc(store,'pairs',code),{members:[uid],createdBy:uid,ts:1});batch.update(doc(store,'profiles',uid),{pairId:code});await batch.commit();}
+async function join(store,uid){await runTransaction(store,async t=>{const self=doc(store,'profiles',uid),pair=doc(store,'pairs',code);await t.get(self);const room=await t.get(pair);t.update(pair,{members:[...room.data().members,uid]});t.update(self,{pairId:code});});}
+async function couple(){const alice=await register('alice'),bob=await register('bob');await invite(alice,'alice');await join(bob,'bob');return{alice,bob};}
+before(async()=>{env=await initializeTestEnvironment({projectId:'demo-sully-loc',firestore:{rules:await readFile(new URL('../firestore.rules',import.meta.url),'utf8')}});});
+beforeEach(async()=>{await env.clearFirestore();});
+after(async()=>{await env?.cleanup();});
+test('sem login não lê perfis e uma conta não edita o perfil da outra',async()=>{const alice=await register('alice');await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),'profiles','alice')));await assertFails(setDoc(doc(alice,'profiles','bob'),profile('bob')));await assertFails(getDocs(collection(alice,'profiles')));});
+test('registo independente não dá acesso a outro perfil',async()=>{await register('alice');const bob=await register('bob');await assertFails(getDoc(doc(bob,'profiles','alice')));});
+test('convite precisa de transação conjunta com o perfil',async()=>{const alice=await register('alice');await assertFails(setDoc(doc(alice,'pairs',code),{members:['alice'],createdBy:'alice',ts:1}));await assertSucceeds(invite(alice,'alice'));});
+test('convite liga duas contas e recusa uma terceira',async()=>{const{alice,bob}=await couple();await assertSucceeds(getDoc(doc(bob,'profiles','alice')));const third=await register('third');await assertFails(join(third,'third'));await assertFails(updateDoc(doc(alice,'pairs',code),{members:['alice','third']}));await assertFails(getDoc(doc(third,'pairs',code)));});
+test('humor é privado até autorizar e volta a ser privado quando revogado',async()=>{const{alice,bob}=await couple();const id='alice_2026-11-17_manha',path=['pairs',code,'moods','alice','entries',id];await setDoc(doc(alice,...path),{id,from:'alice',day:'2026-11-17',period:'manha',mood:'bem',note:'',ts:1});await assertFails(getDoc(doc(bob,...path)));await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:true,status:false,location:false}});await assertSucceeds(getDocs(collection(bob,'pairs',code,'moods','alice','entries')));await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:false,status:false,location:false}});await assertFails(getDoc(doc(bob,...path)));});
+test('localização exige autorização e não pode ser colocada no chat comum',async()=>{const{alice,bob}=await couple();const position={id:'alice',from:'alice',kind:'location',text:'Aqui',ts:1,lat:-8.8,lng:13.2};const path=['pairs',code,'locations','alice'];await assertFails(setDoc(doc(alice,...path),position));await assertFails(setDoc(doc(alice,'pairs',code,'events','alice'),position));await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:false,status:false,location:true}});await assertSucceeds(setDoc(doc(alice,...path),position));await assertSucceeds(getDoc(doc(bob,...path)));await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:false,status:false,location:false}});await assertFails(getDoc(doc(bob,...path)));});
+test('mensagens não permitem forjar remetente nem ler outro casal',async()=>{const{alice}=await couple();const third=await register('third');const message={id:'msg',from:'alice',kind:'text',text:'Olá',ts:1};await assertSucceeds(setDoc(doc(alice,'pairs',code,'events','msg'),message));await assertFails(setDoc(doc(alice,'pairs',code,'events','fake'),{...message,id:'fake',from:'bob'}));await assertFails(getDoc(doc(third,'pairs',code,'events','msg')));});

@@ -1,57 +1,74 @@
-# Colocar o sully.loc a funcionar
+# Ativar contas e ligar os dois telemóveis
 
 ## 1. GitHub Pages
 
-No repositório: **Settings → Pages → Build and deployment → Deploy from a branch → main → / (root) → Save**.
+No repositório: **Settings → Pages → Deploy from a branch → main → / (root) → Save**.
 
-O endereço esperado após o primeiro deploy é `https://manuelsampaio.github.io/sully.loc/`. O domínio só funciona depois de o Pages ser ativado e o deploy terminar. O código usa caminhos relativos para este subdiretório.
+Endereço: `https://manuelsampaio.github.io/sully.loc/`.
 
-## 2. Ligar os dois telemóveis
-
-Apenas o site não consegue sincronizar os dados. Esta versão inclui um adaptador Firebase, desativado até concluir estes passos. Não colocar palavras-passe nem chaves de administração no GitHub.
+## 2. Configurar o Firebase uma vez
 
 1. Criar um projeto na [consola Firebase](https://console.firebase.google.com/). Não é necessário Analytics.
-2. Registar uma aplicação Web e copiar o objeto público de configuração para `firebase` em `config.js`.
-3. Ativar **Authentication → Email/Password**. Criar manualmente as duas contas na consola. Não existe registo público na interface.
-4. Copiar os UIDs dessas duas contas para `members` em `config.js` e substituir `UID_MANUEL` e `UID_PAR` em `firestore.rules` pelos mesmos UIDs. Personalizar os nomes.
-5. Criar uma base **Cloud Firestore**, em modo de produção. Publicar integralmente as regras de `firestore.rules` no separador Rules. Nunca ativar acesso público temporário.
-6. Adicionar `manuelsampaio.github.io` aos domínios autorizados do Authentication se necessário.
-7. Só depois definir `enabled: true` em `config.js` e guardar as alterações no GitHub.
-8. Cada pessoa entra pela sua conta em Ajustes. A escolha de dispositivo de confiança recarrega o site antes do primeiro login para inicializar a cache; depois introduzir a palavra-passe novamente.
+2. Registar uma aplicação Web. Copiar o objeto público de configuração para `firebase` em `config.js`.
+3. Ativar **Authentication → Email/Password**. As pessoas vão criar as suas próprias contas no site; já não é preciso criar contas manualmente nem colocar UIDs no código.
+4. Criar a base **Cloud Firestore**, em modo de produção. Publicar as regras atuais de `firestore.rules` no separador Rules, antes de ativar o modo online.
+5. Adicionar `manuelsampaio.github.io` aos domínios autorizados de Authentication, se necessário.
+6. Definir `enabled: true` em `config.js` e guardar as alterações no GitHub.
 
-O objeto Firebase de configuração Web é público por natureza. As regras do Firestore, e não esconder esse objeto, controlam o acesso aos documentos.
+O objeto de configuração Web é público por natureza. Não colocar palavras-passe, service accounts ou credenciais administrativas no repositório. As regras do Firestore controlam o acesso.
 
-## 3. Verificação antes de uso privado
+Se escolherem guardar dados num dispositivo de confiança, o site recarrega antes da primeira autenticação para inicializar a cache. Voltar a abrir o registo/login e introduzir os dados. A palavra-passe não é guardada pelo código do site.
 
-- Usar duas sessões independentes com as duas contas autorizadas; confirmar ida e volta de texto, desenho, humor e estado.
-- Criar uma terceira conta de teste e confirmar que a interface a rejeita e as regras recusam leitura e escrita. Confirmar também recusa sem login no simulador de regras.
-- No simulador, tentar escrever `from` com UID do outro: deve falhar. Tentar alterar uma mensagem existente: deve falhar.
-- Desligar a rede numa conta, enviar uma mensagem e confirmar «em espera». Voltar a ligar e verificar «sincronizada» nos dois lados. Não significa que foi lida.
-- Em dispositivo de confiança, recarregar offline após uma sessão online; confirmar que a interface abre e a fila é retomada ao voltar a rede. O SDK Firebase também precisa de ter sido carregado previamente pelo navegador; o service worker só garante a interface local, não os módulos externos.
-- Terminar sessão e confirmar que o histórico fica oculto e a cache é limpa. Se houver outros separadores abertos, fechá-los e repetir.
-- Negar localização: deve mostrar mensagem e permitir continuar. Autorizar: deve enviar só uma posição. Confirmar que não há pedidos de localização ao abrir o site.
+## 3. Criar os dois perfis
 
-## 4. Instalação e avisos
+1. Cada pessoa abre o site no seu telemóvel e escolhe **Criar a minha conta**.
+2. Introduz o seu próprio nome, e-mail e palavra-passe. A palavra-passe é tratada pelo Firebase Authentication, não guardada em documentos Firestore.
+3. Uma das pessoas vai a **Ajustes → O nosso espaço → Criar convite**.
+4. Envia o código de 32 caracteres ao seu par por um canal privado.
+5. O outro cola-o em **Já recebeste um convite? → Aceitar convite**.
+6. Cada pessoa vai a **O que quero partilhar** e ativa apenas as opções que pretende.
 
-Usar «Adicionar ao ecrã principal» no navegador. O manifest inclui ícones PNG de 192 e 512 px e um apple-touch-icon de 180 px para o iPhone.
+Cada espaço admite duas contas. Um código aceite deixa de admitir outra pessoa. Não há pesquisa/listagem pública de perfis ou convites. Uma conta não recebe dados de outra só por se registar.
 
-Ativar avisos em Ajustes é opcional. Os lembretes de água são pessoais neste dispositivo. O outro pode enviar um carinho sobre água, mas não alterar o teu contador.
+## 4. Partilha e privacidade
 
-**Ainda não há Web Push em segundo plano.** Para receber mensagens com o site fechado será necessário configurar um emissor de push seguro e a subscrição de cada dispositivo. Não colocar credenciais de envio no JavaScript público. No iPhone, Web Push requer instalação no ecrã principal e suporte do sistema.
+Humor, estado e localização começam com a partilha desligada. Mensagens e notas enviadas na conversa são partilhadas com o par depois da ligação.
+
+- O autor pode registar o seu humor sem o tornar visível ao par.
+- O par só pode ler humores/estados se o autor autorizar nas suas preferências.
+- Localização: é preciso ativar a opção e tocar em **Partilhar onde estou**. A posição atual substitui a anterior; não há rastreio nem histórico de movimentos.
+- Ao desligar localização, a última posição deixa de ser lida pelo par e desaparece da interface. Informação anteriormente vista, fotografada ou exportada não pode ser retirada do dispositivo do outro.
+- Os dados não têm encriptação ponta a ponta; o proprietário do projeto Firebase tem acesso administrativo.
+- Nesta versão, não existe interface para desfazer uma ligação de casal ou eliminar uma conta. Para reorganizar uma ligação, é necessária intervenção do proprietário na consola; revogar partilha de humor, estado e localização continua disponível no site.
+- O modo online mostra as 150 mensagens e os 90 check-ins mais recentes de cada pessoa. Exportar inclui os dados atualmente carregados e autorizados.
+
+## 5. Teste antes de dados pessoais
+
+Executar `npm test` e `npm run test:rules`. O segundo inicia um emulador local com projeto `demo-sully-loc`, sem ligar ao projeto real. Requer Java 21 e as dependências de desenvolvimento (`npm install`).
+
+Depois testar num projeto real, com contas de teste:
+
+1. Criar duas contas em sessões independentes; confirmar que antes do convite não há acesso ao perfil ou dados da outra.
+2. Aceitar um convite; tentar reutilizá-lo numa terceira conta e confirmar recusa.
+3. Confirmar mensagens, desenhos, humores e estados de ida e volta.
+4. Desligar a partilha de humor, estado e localização em cada lado; confirmar que os dados deixam de aparecer no outro. Não confundir dados guardados no próprio aparelho com nova leitura autorizada do servidor.
+5. Negar a permissão de localização do navegador e continuar a conversar.
+6. Desligar a rede, enviar texto e voltar a ligar. «Sincronizada» confirma gravação, não leitura pelo par.
+7. Terminar sessão e confirmar que o site volta ao ecrã de entrada. Se a limpeza da cache pedir, fechar os outros separadores e repetir.
+
+## 6. iPhone e Android
+
+- iPhone: Safari → Partilhar → Adicionar ao ecrã principal.
+- Android: Chrome → menu ⋮ → Instalar ou Adicionar ao ecrã principal.
+
+Verificar escrita, teclado, botão Enviar e desenho nos dois aparelhos. Há ícones PNG de 192/512 px e apple-touch-icon de 180 px.
+
+**Avisos com o site fechado ainda não estão implementados.** Os lembretes funcionam enquanto o site permanece aberto e o navegador permite executar temporizadores. Web Push exige um emissor seguro e subscrições dos dispositivos; não colocar credenciais de envio no JavaScript público.
+
+A interface local pode abrir offline depois de uma primeira visita. O modo de conta depende também de o SDK Firebase externo ter sido carregado e da escolha de persistência feita no login.
 
 ## Referências oficiais
 
-- [Firebase Web via CDN](https://firebase.google.com/docs/web/alt-setup)
-- [Persistência offline do Firestore](https://firebase.google.com/docs/firestore/manage-data/enable-offline)
-- [Regras de segurança do Firestore](https://firebase.google.com/docs/firestore/security/get-started)
-
-
-## Teste nos dois telemóveis
-
-Antes do Firebase, cada telemóvel pode testar a interface local, mas não vê o que foi enviado no outro. Depois de configurar as duas contas:
-
-1. Abrir o endereço publicado no Safari do iPhone e no Chrome do Android. Entrar com uma conta diferente em cada um.
-2. Confirmar mensagem de ida e volta, humor, estado e desenho. Não trocar perfis de demonstração para este teste real.
-3. Negar a localização num aparelho e continuar a conversar; no outro, partilhar uma posição apenas se quiserem.
-4. Instalar no ecrã principal e voltar a abrir. Verificar teclado, escrita, botão Enviar e navegação.
-5. Testar sem rede e depois voltar a ligar. Verificar sincronização. Avisos com o site fechado ainda não são suportados nesta versão.
+- [Contas por e-mail e palavra-passe](https://firebase.google.com/docs/auth/web/password-auth)
+- [Regras com getAfter e operações atómicas](https://firebase.google.com/docs/firestore/security/rules-conditions)
+- [Persistência offline](https://firebase.google.com/docs/firestore/manage-data/enable-offline)

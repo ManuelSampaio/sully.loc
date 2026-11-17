@@ -1,10 +1,16 @@
 {
   "name": "sully-loc",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.js",
-    "dev": "node scripts/dev.mjs"
+    "test": "node --test tests/core.test.js",
+    "dev": "node scripts/dev.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-sully-loc \"node --test tests/rules.test.js\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^15.36.0"
   }
 }

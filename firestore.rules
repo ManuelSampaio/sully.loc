@@ -1,42 +1,83 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Substituir pelos dois UIDs de Authentication antes de publicar estas regras.
-    function member() { return request.auth != null && request.auth.uid in ['UID_MANUEL', 'UID_PAR']; }
-    function text(v, max) { return v is string && v.size() <= max; }
-    match /members/{uid} {
-      allow read: if member();
-      allow create, update: if member() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['id','name','status','until','ts'])
-        && request.resource.data.id == uid
-        && text(request.resource.data.name,40) && request.resource.data.name.size()>0
-        && request.resource.data.status in ['disponivel','ocupado','dormir','sesta']
-        && request.resource.data.until is number && request.resource.data.until >= 0
-        && request.resource.data.ts is number;
-      allow delete: if member() && request.auth.uid == uid;
+    function signed() { return request.auth != null; }
+    function text(v,max) { return v is string && v.size() <= max; }
+    function member(pair) { return signed() && request.auth.uid in get(/databases/$(database)/documents/pairs/$(pair)).data.members; }
+    function shared(uid,key) { return request.auth.uid == uid || get(/databases/$(database)/documents/profiles/$(uid)).data.sharing[key] == true; }
+    function profileValid(uid) {
+      let p = request.resource.data;
+      return p.keys().hasAll(['id','name','pairId','sharing','ts'])
+        && p.keys().hasOnly(['id','name','pairId','sharing','ts'])
+        && p.id == uid && text(p.name,40) && p.name.size()>0
+        && p.ts is number && p.pairId is string
+        && p.sharing.keys().hasAll(['mood','status','location'])
+        && p.sharing.keys().hasOnly(['mood','status','location'])
+        && p.sharing.mood is bool && p.sharing.status is bool && p.sharing.location is bool
+        && (p.pairId == '' || uid in getAfter(/databases/$(database)/documents/pairs/$(p.pairId)).data.members);
     }
-    match /moods/{id} {
-      allow read: if member();
-      allow create, update: if member()
-        && request.resource.data.keys().hasOnly(['id','from','day','period','mood','note','ts'])
-        && request.resource.data.id == id && request.resource.data.from == request.auth.uid
-        && id == request.auth.uid + '_' + request.resource.data.day + '_' + request.resource.data.period
-        && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-        && request.resource.data.period in ['manha','tarde','noite']
-        && request.resource.data.mood in ['radiante','bem','tranquilo','cansado','triste','stressado']
-        && text(request.resource.data.note,500) && request.resource.data.ts is number;
-      allow delete: if member() && resource.data.from == request.auth.uid;
+    match /profiles/{uid} {
+      allow get: if signed() && (request.auth.uid == uid || (resource.data.pairId != '' && member(resource.data.pairId)));
+      allow create: if signed() && request.auth.uid == uid && profileValid(uid) && request.resource.data.pairId == '';
+      allow update: if signed() && request.auth.uid == uid && profileValid(uid)
+        && (resource.data.pairId == '' || request.resource.data.pairId == resource.data.pairId);
     }
-    match /events/{id} {
-      allow read: if member();
-      allow create: if member()
-        && request.resource.data.keys().hasOnly(['id','from','kind','text','ts','image','lat','lng'])
-        && request.resource.data.id == id && request.resource.data.from == request.auth.uid
-        && text(request.resource.data.text,2000) && request.resource.data.ts is number
-        && request.resource.data.kind in ['text','quick','note','drawing','location']
-        && (request.resource.data.kind != 'drawing' || (text(request.resource.data.image,179999) && request.resource.data.image.matches('^data:image/png;base64,[A-Za-z0-9+/=]+$')))
-        && (request.resource.data.kind != 'location' || (request.resource.data.lat is number && request.resource.data.lng is number && request.resource.data.lat >= -90 && request.resource.data.lat <= 90 && request.resource.data.lng >= -180 && request.resource.data.lng <= 180));
-      allow delete: if member() && resource.data.from == request.auth.uid;
+    match /pairs/{pair} {
+      // Um convite aberto só pode ser consultado pelo ID secreto completo. Listagens são proibidas.
+      allow get: if signed() && (request.auth.uid in resource.data.members || resource.data.members.size() == 1);
+      allow create: if signed() && pair.matches('^[a-f0-9]{32}$')
+        && request.resource.data.keys().hasOnly(['members','createdBy','ts'])
+        && request.resource.data.members == [request.auth.uid]
+        && request.resource.data.createdBy == request.auth.uid && request.resource.data.ts is number
+        && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId == pair;
+      allow update: if signed() && resource.data.members.size() == 1
+        && !(request.auth.uid in resource.data.members)
+        && request.resource.data.keys().hasOnly(['members','createdBy','ts'])
+        && request.resource.data.members == [resource.data.members[0],request.auth.uid]
+        && request.resource.data.createdBy == resource.data.createdBy && request.resource.data.ts == resource.data.ts
+        && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId == ''
+        && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId == pair;
+      match /states/{uid} {
+        allow read: if member(pair) && shared(uid,'status');
+        allow create, update: if member(pair) && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['id','name','status','until','ts'])
+          && request.resource.data.id == uid && text(request.resource.data.name,40)
+          && request.resource.data.status in ['disponivel','ocupado','dormir','sesta']
+          && request.resource.data.until is number && request.resource.data.until >= 0 && request.resource.data.ts is number;
+      }
+      match /moods/{uid}/entries/{id} {
+        allow read: if member(pair) && shared(uid,'mood');
+        allow create, update: if member(pair) && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['id','from','day','period','mood','note','ts'])
+          && request.resource.data.id == id && request.resource.data.from == uid
+          && id == uid + '_' + request.resource.data.day + '_' + request.resource.data.period
+          && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.period in ['manha','tarde','noite']
+          && request.resource.data.mood in ['radiante','bem','tranquilo','cansado','triste','stressado']
+          && text(request.resource.data.note,500) && request.resource.data.ts is number;
+      }
+      match /locations/{uid} {
+        allow read: if member(pair) && shared(uid,'location');
+        allow create, update: if member(pair) && request.auth.uid == uid
+          && get(/databases/$(database)/documents/profiles/$(uid)).data.sharing.location == true
+          && request.resource.data.keys().hasOnly(['id','from','kind','text','ts','lat','lng'])
+          && request.resource.data.id == uid && request.resource.data.from == uid && request.resource.data.kind == 'location'
+          && text(request.resource.data.text,2000) && request.resource.data.ts is number
+          && request.resource.data.lat is number && request.resource.data.lng is number
+          && request.resource.data.lat >= -90 && request.resource.data.lat <= 90
+          && request.resource.data.lng >= -180 && request.resource.data.lng <= 180;
+      }
+      match /events/{id} {
+        allow read: if member(pair);
+        allow create: if member(pair)
+          && request.resource.data.keys().hasOnly(['id','from','kind','text','ts','image'])
+          && request.resource.data.id == id && request.resource.data.from == request.auth.uid
+          && text(request.resource.data.text,2000) && request.resource.data.ts is number
+          && request.resource.data.kind in ['text','quick','note','drawing']
+          && (request.resource.data.kind != 'drawing' || (text(request.resource.data.image,179999) && request.resource.data.image.matches('^data:image/png;base64,[A-Za-z0-9+/=]+$')));
+        allow delete: if member(pair) && resource.data.from == request.auth.uid;
+      }
     }
+    // Tudo o resto, incluindo as coleções da versão antiga, fica inacessível.
   }
 }
