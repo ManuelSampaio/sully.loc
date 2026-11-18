@@ -1,3 +1,4 @@
+import { applyTheme } from './theme.js';
 import { renderSky, skyState } from './sky.js';
 import { icon, mountIcons } from './icons.js?rev=period-moods';
 import { MOODS, MOOD_PERIODS, moodsForPeriod, QUICK, dayKey, period, effectiveStatus, waterAdd, validEvent, isDrawing } from './core.js?rev=period-moods';
@@ -126,7 +127,23 @@ $('#demo-form').onsubmit=e=>{e.preventDefault();const name=$('#demo-name').value
 $('#logout-button').onclick=()=>{moodDrafts.clear();if(cloudConfig.enabled)cloud?.logout().catch(e=>toast(friendlyError(e)));else{me=null;$('#entry').hidden=false;$('#workspace').hidden=true;showPage('home');}};
 $('#login-form').onsubmit=async e=>{e.preventDefault();if(!cloudConfig.enabled||!cloud){$('#login-error').textContent='O registo e o login reais precisam de Firebase configurado.';return;}if(authMode==='signup'&&!$('#signup-name').value.trim()){$('#login-error').textContent='Escreve o teu nome.';return;}if(!requireNetwork())return;const b=$('#auth-submit');b.disabled=true;const finish=beginLoading(authMode==='signup'?'A criar a tua conta…':'A entrar na Sully…');try{const result=authMode==='signup'?await cloud.signup($('#signup-name').value.trim(),$('#email').value.trim(),$('#password').value,$('#trusted').checked):await cloud.login($('#email').value.trim(),$('#password').value,$('#trusted').checked);if(result.reload){$('#password').value='';location.reload();return;}$('#password').value='';$('#login-dialog').close();showPage('settings');}catch(error){$('#login-error').textContent=friendlyError(error);}finally{b.disabled=false;finish();}};
 $('#reset-password').onclick=async()=>{const email=$('#email').value.trim();if(!cloud){$('#login-error').textContent='O serviço de contas ainda não está configurado.';return;}if(!email||!$('#email').checkValidity()){$('#login-error').textContent='Escreve o teu e-mail primeiro.';return;}try{await cloud.resetPassword(email);$('#login-error').textContent='Se a conta existir, receberás instruções por e-mail.';}catch(e){$('#login-error').textContent=friendlyError(e);}};
+function renderAppearance(){
+ const preference=me?personal.appearance:read('sully.appearance.preview',{});
+ const state=applyTheme(preference);
+ if(me){try{const preview=JSON.stringify({mode:state.mode,accent:state.accent});if(localStorage.getItem('sully.appearance.preview')!==preview)localStorage.setItem('sully.appearance.preview',preview);}catch{/* The account preference still applies in memory. */}}
+ $('#theme-mode').value=state.mode;
+ $$('#accent-options button').forEach(b=>{const yes=b.dataset.accent===state.accent;b.classList.toggle('selected',yes);b.setAttribute('aria-pressed',yes);});
+}
+function saveAppearance(change){
+ if(!requireIdentity())return;
+ const previous=personal;personal={...personal,appearance:{...personal.appearance,...change}};
+ if(!savePersonal()){personal=previous;return;}
+ persist('sully.appearance.preview',personal.appearance);renderAppearance();toast('Aspeto guardado só para ti neste navegador.');
+}
+$('#theme-mode').onchange=()=>saveAppearance({mode:$('#theme-mode').value});
+$$('#accent-options button').forEach(b=>b.onclick=()=>saveAppearance({accent:b.dataset.accent}));
 function renderAccount(){
+ renderAppearance();
  renderNickname();
  if(!$('#sharing-form').contains(document.activeElement)){for(const key of ['mood','status','location'])$('#share-'+key).checked=own().sharing?.[key]===true;}
  if(!cloudConfig.enabled){$('#pair-actions').hidden=true;$('#invite-result').hidden=true;$('#pair-description').textContent='Estás na demonstração local. O registo e a ligação entre telefones precisam de Firebase.';$('#demo-person option[value="a"]').textContent=data.members.a.name;$('#demo-person option[value="b"]').textContent=data.members.b.name;return;}
@@ -139,7 +156,7 @@ $('#create-invite').onclick=()=>pairAction($('#create-invite'),()=>cloud.createI
 $('#join-invite').onclick=()=>pairAction($('#join-invite'),()=>cloud.joinInvite($('#invite-input').value.trim().toLowerCase()));
 $('#copy-invite').onclick=async()=>{try{await navigator.clipboard.writeText($('#invite-code').value);toast('Código copiado. Envia-o apenas ao teu par.');}catch{$('#invite-code').select();toast('Seleciona e copia o código.');}};
 
-function updateDate(){const d=new Date();renderSky($('#day-sky'),d);$('#today').textContent=d.toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();$('#greeting').textContent={manha:'Bom dia.',tarde:'Boa tarde.',noite:'Boa noite.'}[skyState(d).phase];}
+function updateDate(){renderAppearance();const d=new Date();renderSky($('#day-sky'),d);$('#today').textContent=d.toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();$('#greeting').textContent={manha:'Bom dia.',tarde:'Boa tarde.',noite:'Boa noite.'}[skyState(d).phase];}
 setInterval(()=>{updateDate();if(!me)return;const now=Date.now();if(prefs.waterMinutes && personal.nextWater && now>=personal.nextWater){personal.nextWater=now+prefs.waterMinutes*60000;savePersonal();notify('Uma pausa para beber um pouco de água? 💧');}const h=new Date().getHours();const p=h<14?'manha':h<20?'tarde':'noite';const ready=(h>=8&&h<12)||(h>=14&&h<18)||h>=20;const key=dayKey()+'_'+p;if(prefs.moodReminder&&ready&&personal.moodReminder!==key&&!data.moods.some(m=>m.from===me&&m.day===dayKey()&&m.period===p)){personal.moodReminder=key;savePersonal();notify('Se te apetecer, partilha como estás. ♡');}render();},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateDate();});
 window.addEventListener('pageshow',updateDate);

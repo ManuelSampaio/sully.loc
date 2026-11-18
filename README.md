@@ -4,6 +4,7 @@ Sully: um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScr
 
 ## Versão 0.3
 
+- Aspeto pessoal em Ajustes: Automático (claro das 6h às 18h), Claro ou Escuro e quatro cores de destaque. Preferência por conta neste navegador, sem alterar o parceiro.
 - Faixa de sol e lua acompanhando a hora local, sem localização. Ciclo ilustrativo: sol das 6h às 18h, lua à noite.
 - Check-in com moods e perguntas próprios de manhã, tarde e noite, frase opcional e atualização do mesmo período. Os registos antigos continuam legíveis e editáveis; rascunhos por período são mantidos em memória durante a sessão.
 - Estados disponível, a trabalhar, a estudar, ocupado/a, em deslocação, a dormir e a descansar com duração. Dormir e descansar silenciam os avisos.
