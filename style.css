@@ -37,3 +37,5 @@
 @media(max-width:360px){.moods button>.s-icon{width:25px;height:25px}.status-options button{gap:6px}}
 
 .nickname-settings{border-top:1px solid var(--line);margin-top:24px;padding-top:6px}.nickname-settings .footnote{margin:8px 0 12px;overflow-wrap:anywhere}.nickname-actions{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}.nickname-actions button:disabled{cursor:default}.partner-card h2,.message-meta{overflow-wrap:anywhere}
+
+.status-options button:last-child{grid-column:1/-1}@media(max-width:760px){.status-card .footnote{display:block;font-size:10px;line-height:1.5}}

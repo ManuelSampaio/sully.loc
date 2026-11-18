@@ -13,6 +13,20 @@ async function couple(){const alice=await register('alice'),bob=await register('
 before(async()=>{env=await initializeTestEnvironment({projectId:'demo-sully-loc',firestore:{rules:await readFile(new URL('../firestore.rules',import.meta.url),'utf8')}});});
 beforeEach(async()=>{await env.clearFirestore();});
 after(async()=>{await env?.cleanup();});
+test('novos estados respeitam autoria, partilha e revogação',async()=>{
+  const {alice,bob}=await couple();
+  const path=['pairs',code,'states','alice'];
+  for(const status of ['trabalhar','estudar','deslocacao']){
+    await assertSucceeds(setDoc(doc(alice,...path),{id:'alice',name:'Alice',status,until:0,ts:1}));
+    await assertFails(getDoc(doc(bob,...path)));
+  }
+  await assertFails(setDoc(doc(alice,...path),{id:'alice',name:'Alice',status:'invalido',until:0,ts:1}));
+  await assertFails(setDoc(doc(bob,...path),{id:'alice',name:'Alice',status:'trabalhar',until:0,ts:1}));
+  await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:false,status:true,location:false}});
+  await assertSucceeds(getDoc(doc(bob,...path)));
+  await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:false,status:false,location:false}});
+  await assertFails(getDoc(doc(bob,...path)));
+});
 test('sem login não lê perfis e uma conta não edita o perfil da outra',async()=>{const alice=await register('alice');await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),'profiles','alice')));await assertFails(setDoc(doc(alice,'profiles','bob'),profile('bob')));await assertFails(getDocs(collection(alice,'profiles')));});
 test('registo independente não dá acesso a outro perfil',async()=>{await register('alice');const bob=await register('bob');await assertFails(getDoc(doc(bob,'profiles','alice')));});
 test('convite precisa de transação conjunta com o perfil',async()=>{const alice=await register('alice');await assertFails(setDoc(doc(alice,'pairs',code),{members:['alice'],createdBy:'alice',ts:1}));await assertSucceeds(invite(alice,'alice'));});

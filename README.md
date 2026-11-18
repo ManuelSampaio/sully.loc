@@ -5,7 +5,7 @@ Sully: um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScr
 ## Versão 0.3
 
 - Check-in de humor de manhã, tarde e noite, com frase opcional e atualização do mesmo período.
-- Estados disponível, ocupado/a, dormir e sesta temporizada.
+- Estados disponível, a trabalhar, a estudar, ocupado/a, em deslocação, a dormir e a descansar com duração. Dormir e descansar silenciam os avisos.
 - Mensagens rápidas editáveis, chat de texto, notas e desenhos com rato ou toque.
 - Partilha pontual de localização mediante confirmação e permissão do navegador.
 - Contador pessoal de água e lembretes enquanto o site está aberto.
