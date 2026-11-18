@@ -34,3 +34,13 @@ test('convite liga duas contas e recusa uma terceira',async()=>{const{alice,bob}
 test('humor é privado até autorizar e volta a ser privado quando revogado',async()=>{const{alice,bob}=await couple();const id='alice_2026-11-17_manha',path=['pairs',code,'moods','alice','entries',id];await setDoc(doc(alice,...path),{id,from:'alice',day:'2026-11-17',period:'manha',mood:'bem',note:'',ts:1});await assertFails(getDoc(doc(bob,...path)));await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:true,status:false,location:false}});await assertSucceeds(getDocs(collection(bob,'pairs',code,'moods','alice','entries')));await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:false,status:false,location:false}});await assertFails(getDoc(doc(bob,...path)));});
 test('localização exige autorização e não pode ser colocada no chat comum',async()=>{const{alice,bob}=await couple();const position={id:'alice',from:'alice',kind:'location',text:'Aqui',ts:1,lat:-8.8,lng:13.2};const path=['pairs',code,'locations','alice'];await assertFails(setDoc(doc(alice,...path),position));await assertFails(setDoc(doc(alice,'pairs',code,'events','alice'),position));await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:false,status:false,location:true}});await assertSucceeds(setDoc(doc(alice,...path),position));await assertSucceeds(getDoc(doc(bob,...path)));await updateDoc(doc(alice,'profiles','alice'),{sharing:{mood:false,status:false,location:false}});await assertFails(getDoc(doc(bob,...path)));});
 test('mensagens não permitem forjar remetente nem ler outro casal',async()=>{const{alice}=await couple();const third=await register('third');const message={id:'msg',from:'alice',kind:'text',text:'Olá',ts:1};await assertSucceeds(setDoc(doc(alice,'pairs',code,'events','msg'),message));await assertFails(setDoc(doc(alice,'pairs',code,'events','fake'),{...message,id:'fake',from:'bob'}));await assertFails(getDoc(doc(third,'pairs',code,'events','msg')));});
+
+test('moods novos pertencem ao período certo e os antigos continuam editáveis',async()=>{
+ const {alice}=await couple();
+ const write=(period,mood)=>{const id=`alice_2026-11-18_${period}`;return setDoc(doc(alice,'pairs',code,'moods','alice','entries',id),{id,from:'alice',day:'2026-11-18',period,mood,note:'',ts:1});};
+ for(const [period,ids] of [['manha',['energia','sono']],['tarde',['foco']],['noite',['paz','grato','exausto']]])for(const mood of ids)await assertSucceeds(write(period,mood));
+ await assertFails(write('tarde','energia'));
+ await assertFails(write('manha','paz'));
+ await assertFails(write('noite','desconhecido'));
+ for(const period of ['manha','tarde','noite'])await assertSucceeds(write(period,'radiante'));
+});

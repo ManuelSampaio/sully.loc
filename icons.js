@@ -7,6 +7,8 @@ const paths = {
   cansado: face + '<path d="M6.5 10h3m5 0h3"/><ellipse cx="12" cy="15" rx="1.5" ry="2"/>',
   triste: face + '<path d="M8 9h.01M16 9h.01M8 16a4 4 0 0 1 8 0"/>',
   stressado: face + '<path d="m6.5 7.5 3 1m5 0 3-1M8 11h.01M16 11h.01M7.5 16l2-1 2 1 2-1 3 1"/>',
+  exausto: face + '<path d="M6.5 10h3m5 0h3M9 16h6M7 7l2 1m6 0 2-1"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
   heart: '<path d="M20.5 5.5a5 5 0 0 0-7 0L12 7l-1.5-1.5a5 5 0 0 0-7 7L12 21l8.5-8.5a5 5 0 0 0 0-7Z"/>',
   hands: '<path d="m2 12 4-7 4 2m12 5-4-7-4 2M5 14l5 5q2 2 4 0l5-5M8 8l3-2q1-1 3 0l4 3-4 5-3-2-2 2-3-3M10 16l3 3m0-6 4 4"/>',
   chat: '<path d="M21 11a9 9 0 0 1-9 9H4l-2 2v-10a10 10 0 0 1 19-1Z"/><path d="M7 10h10M7 14h6"/>',
@@ -29,7 +31,7 @@ const paths = {
   arrow: '<path d="M6 18 18 6M6 6h12v12"/>',
   down: '<path d="m6 9 6 6 6-6"/>'
 };
-const aliases = {saudades:'heart',preciso:'hands',falar:'chat',ligar:'phone',onde:'pin',agua:'drop'};
+const aliases = {energia:'sun',sono:'cansado',foco:'target',paz:'tranquilo',grato:'heart',saudades:'heart',preciso:'hands',falar:'chat',ligar:'phone',onde:'pin',agua:'drop'};
 
 export function icon(name) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');

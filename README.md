@@ -5,7 +5,7 @@ Sully: um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScr
 ## Versão 0.3
 
 - Faixa de sol e lua acompanhando a hora local, sem localização. Ciclo ilustrativo: sol das 6h às 18h, lua à noite.
-- Check-in de humor de manhã, tarde e noite, com frase opcional e atualização do mesmo período.
+- Check-in com moods e perguntas próprios de manhã, tarde e noite, frase opcional e atualização do mesmo período. Os registos antigos continuam legíveis e editáveis; rascunhos por período são mantidos em memória durante a sessão.
 - Estados disponível, a trabalhar, a estudar, ocupado/a, em deslocação, a dormir e a descansar com duração. Dormir e descansar silenciam os avisos.
 - Mensagens rápidas editáveis, chat de texto, notas e desenhos com rato ou toque.
 - Partilha pontual de localização mediante confirmação e permissão do navegador.

@@ -53,7 +53,10 @@ service cloud.firestore {
           && id == uid + '_' + request.resource.data.day + '_' + request.resource.data.period
           && request.resource.data.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
           && request.resource.data.period in ['manha','tarde','noite']
-          && request.resource.data.mood in ['radiante','bem','tranquilo','cansado','triste','stressado']
+          && (request.resource.data.mood in ['radiante','bem','tranquilo','cansado','triste','stressado']
+            || (request.resource.data.period == 'manha' && request.resource.data.mood in ['energia','sono'])
+            || (request.resource.data.period == 'tarde' && request.resource.data.mood == 'foco')
+            || (request.resource.data.period == 'noite' && request.resource.data.mood in ['paz','grato','exausto']))
           && text(request.resource.data.note,500) && request.resource.data.ts is number;
       }
       match /locations/{uid} {
