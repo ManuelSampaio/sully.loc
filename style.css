@@ -35,3 +35,5 @@
 .chat-tools .s-icon,.text-button .s-icon,.primary .s-icon,.connection-card a .s-icon{width:16px;height:16px}
 @media(max-width:760px){.sidebar nav button>.s-icon{width:22px;height:22px}.partner-card #send-heart::after{content:none}.partner-card #send-heart>.s-icon{width:22px;height:22px}.moods button>.s-icon{width:28px;height:28px}}
 @media(max-width:360px){.moods button>.s-icon{width:25px;height:25px}.status-options button{gap:6px}}
+
+.nickname-settings{border-top:1px solid var(--line);margin-top:24px;padding-top:6px}.nickname-settings .footnote{margin:8px 0 12px;overflow-wrap:anywhere}.nickname-actions{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}.nickname-actions button:disabled{cursor:default}.partner-card h2,.message-meta{overflow-wrap:anywhere}

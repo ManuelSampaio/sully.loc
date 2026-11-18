@@ -24,10 +24,12 @@ const localStateKey = () => `sully.personal.${cloudConfig.enabled?'cloud':'demo'
 let personal=read(localStateKey(),{});
 const own = () => ({...(data.members[me]||{}),...(data.profiles?.[me]||{}),name:data.profiles?.[me]?.name||data.members[me]?.name||'Tu'});
 const other = () => cloudConfig.enabled ? {id:currentPair?.members.find(id=>id!==me)||'',name:'O teu par'} : data.members[me==='a'?'b':'a'];
-function nameOf(id) { return data.profiles?.[id]?.name || data.members[id]?.name || 'O teu par'; }
+function profileName(id) { return data.profiles?.[id]?.name || data.members[id]?.name || 'O teu par'; }
+function nicknameOf(id) { const value=personal.nicknames?.[id];return id && id!==me && typeof value==='string' ? value.trim().slice(0,40) : ''; }
+function nameOf(id) { return nicknameOf(id) || profileName(id); }
 function toast(message) { $('#toast').textContent=message; $('#toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('#toast').hidden=true,5500); }
 function saveDemo() { return persist(KEY,data); }
-function savePersonal() { persist(localStateKey(),personal); }
+function savePersonal() { return persist(localStateKey(),personal); }
 function savePrefs() { persist('sully.prefs',prefs); }
 function requireIdentity() { if(!me) { $('#entry').hidden=false;$('#workspace').hidden=true;toast('Cria a tua conta ou explora a demonstração.');return false; } return true; }
 function setConnection(text) { $('#connection').textContent=text;refreshNetwork(); }
@@ -65,6 +67,25 @@ function setStatus(status,minutes=0){if(!requireIdentity())return;const value={i
 $$('[data-status]').forEach(b=>b.onclick=()=>b.dataset.status==='sesta'?$('#nap-dialog').showModal():setStatus(b.dataset.status));$('#nap-form').onsubmit=e=>{e.preventDefault();setStatus('sesta',Number($('#nap-duration').value));$('#nap-dialog').close();};
 $('#water-add').onclick=()=>{if(!requireIdentity())return;personal.water=waterAdd(personal.water);if(prefs.waterMinutes)personal.nextWater=Date.now()+prefs.waterMinutes*60000;savePersonal();render();toast('Um pequeno cuidado registado.');};
 async function saveProfile(){if(!requireIdentity())return;const name=$('#name-input').value.trim();if(!name){toast('Escreve o teu nome.');return;}const sharing={mood:$('#share-mood').checked,status:$('#share-status').checked,location:$('#share-location').checked};try{if(cloudConfig.enabled){if(!cloud)throw new Error('A ligação ainda não está pronta.');if(!requireNetwork())return;const finish=beginLoading('A guardar o teu perfil…');try{await cloud.saveProfile(name,sharing);}finally{finish();}}else{data.members[me]={...own(),id:me,name,sharing};saveDemo();render();}toast('Perfil e escolhas guardados.');}catch(e){toast(friendlyError(e));}}
+function renderNickname(){
+ const partner=other(),input=$('#nickname-input'),available=!!me&&!!partner.id;
+ const sameTarget=input.dataset.owner===(me||'')&&input.dataset.partner===(partner.id||'');
+ if(!sameTarget||document.activeElement!==input)input.value=nicknameOf(partner.id);
+ input.dataset.owner=me||'';input.dataset.partner=partner.id||'';
+ input.disabled=!available;$('#save-nickname').disabled=!available;
+ $('#reset-nickname').disabled=!available||!nicknameOf(partner.id);
+ $('#nickname-help').textContent=available?`Nome do perfil: ${profileName(partner.id)}. Só aparece para ti neste navegador.`:'Liga primeiro a tua conta ao teu par para escolheres um nome de carinho.';
+}
+function saveNickname(value){
+ if(!requireIdentity())return;const partner=other();if(!partner.id){toast('Liga primeiro a tua conta ao teu par.');return;}
+ const nickname=value.trim();if(nickname.length>40){toast('Usa até 40 caracteres.');return;}
+ const previous=personal, nicknames={...personal.nicknames};
+ if(nickname)nicknames[partner.id]=nickname;else delete nicknames[partner.id];
+ personal={...personal,nicknames};if(!savePersonal()){personal=previous;return;}
+ $('#nickname-input').value=nickname;render();toast(nickname?'Nome de carinho guardado só para ti neste navegador.':'Voltaste a usar o nome do perfil.');
+}
+$('#nickname-form').onsubmit=e=>{e.preventDefault();saveNickname($('#nickname-input').value);};
+$('#reset-nickname').onclick=()=>saveNickname('');
 $('#save-name').onclick=saveProfile;$('#sharing-form').onsubmit=e=>{e.preventDefault();saveProfile();};
 $('#demo-person').value=me||'a';$('#demo-person').onchange=()=>{me=$('#demo-person').value;persist('sully.demo.person',me);personal=read(localStateKey(),{});loadMood();render();toast('Agora estás a experimentar como '+own().name);};
 $('#water-reminder').value=String(prefs.waterMinutes||0);$('#water-reminder').onchange=()=>{prefs.waterMinutes=Number($('#water-reminder').value);personal.nextWater=prefs.waterMinutes?Date.now()+prefs.waterMinutes*60000:0;savePrefs();savePersonal();toast('Lembrete atualizado. Funciona com o site aberto.');};
@@ -88,6 +109,7 @@ $('#logout-button').onclick=()=>{if(cloudConfig.enabled)cloud?.logout().catch(e=
 $('#login-form').onsubmit=async e=>{e.preventDefault();if(!cloudConfig.enabled||!cloud){$('#login-error').textContent='O registo e o login reais precisam de Firebase configurado.';return;}if(authMode==='signup'&&!$('#signup-name').value.trim()){$('#login-error').textContent='Escreve o teu nome.';return;}if(!requireNetwork())return;const b=$('#auth-submit');b.disabled=true;const finish=beginLoading(authMode==='signup'?'A criar a tua conta…':'A entrar na Sully…');try{const result=authMode==='signup'?await cloud.signup($('#signup-name').value.trim(),$('#email').value.trim(),$('#password').value,$('#trusted').checked):await cloud.login($('#email').value.trim(),$('#password').value,$('#trusted').checked);if(result.reload){$('#password').value='';location.reload();return;}$('#password').value='';$('#login-dialog').close();showPage('settings');}catch(error){$('#login-error').textContent=friendlyError(error);}finally{b.disabled=false;finish();}};
 $('#reset-password').onclick=async()=>{const email=$('#email').value.trim();if(!cloud){$('#login-error').textContent='O serviço de contas ainda não está configurado.';return;}if(!email||!$('#email').checkValidity()){$('#login-error').textContent='Escreve o teu e-mail primeiro.';return;}try{await cloud.resetPassword(email);$('#login-error').textContent='Se a conta existir, receberás instruções por e-mail.';}catch(e){$('#login-error').textContent=friendlyError(e);}};
 function renderAccount(){
+ renderNickname();
  if(!$('#sharing-form').contains(document.activeElement)){for(const key of ['mood','status','location'])$('#share-'+key).checked=own().sharing?.[key]===true;}
  if(!cloudConfig.enabled){$('#pair-actions').hidden=true;$('#invite-result').hidden=true;$('#pair-description').textContent='Estás na demonstração local. O registo e a ligação entre telefones precisam de Firebase.';$('#demo-person option[value="a"]').textContent=data.members.a.name;$('#demo-person option[value="b"]').textContent=data.members.b.name;return;}
  $('#pair-actions').hidden=!!currentPair;$('#invite-result').hidden=!currentPair||currentPair.members.length!==1;
@@ -101,7 +123,7 @@ $('#copy-invite').onclick=async()=>{try{await navigator.clipboard.writeText($('#
 
 function updateDate(){const d=new Date();$('#today').textContent=d.toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();$('#greeting').textContent={manha:'Bom dia.',tarde:'Boa tarde.',noite:'Boa noite.'}[period(d)];}
 setInterval(()=>{updateDate();if(!me)return;const now=Date.now();if(prefs.waterMinutes && personal.nextWater && now>=personal.nextWater){personal.nextWater=now+prefs.waterMinutes*60000;savePersonal();notify('Uma pausa para beber um pouco de água? 💧');}const h=new Date().getHours();const p=h<14?'manha':h<20?'tarde':'noite';const ready=(h>=8&&h<12)||(h>=14&&h<18)||h>=20;const key=dayKey()+'_'+p;if(prefs.moodReminder&&ready&&personal.moodReminder!==key&&!data.moods.some(m=>m.from===me&&m.day===dayKey()&&m.period===p)){personal.moodReminder=key;savePersonal();notify('Se te apetecer, partilha como estás. ♡');}render();},30000);
-window.addEventListener('online',()=>{reconnecting=true;setConnection(networkLabel());setTimeout(()=>{reconnecting=false;setConnection(networkLabel());},4000);});window.addEventListener('offline',()=>{reconnecting=false;setConnection(networkLabel());if(activeTasks.size)$('#loader-label').textContent='À espera de rede…';});window.addEventListener('storage',e=>{if(!cloudConfig.enabled && e.key===KEY){const fresh=read(KEY,null);if(fresh?.members?.a&&fresh?.members?.b&&Array.isArray(fresh.events)&&Array.isArray(fresh.moods)){const previous=new Set(data.events.map(x=>x.id));data=fresh;for(const item of data.events)if(!previous.has(item.id)&&item.from!==me){notify(nameOf(item.from)+': '+(item.kind==='drawing'?'Enviou um desenho.':item.text));$('#unread').hidden=page==='chat';}render();}}});
+window.addEventListener('online',()=>{reconnecting=true;setConnection(networkLabel());setTimeout(()=>{reconnecting=false;setConnection(networkLabel());},4000);});window.addEventListener('offline',()=>{reconnecting=false;setConnection(networkLabel());if(activeTasks.size)$('#loader-label').textContent='À espera de rede…';});window.addEventListener('storage',e=>{if(me&&e.key===localStateKey()){personal=read(localStateKey(),{});render();}if(!cloudConfig.enabled && e.key===KEY){const fresh=read(KEY,null);if(fresh?.members?.a&&fresh?.members?.b&&Array.isArray(fresh.events)&&Array.isArray(fresh.moods)){const previous=new Set(data.events.map(x=>x.id));data=fresh;for(const item of data.events)if(!previous.has(item.id)&&item.from!==me){notify(nameOf(item.from)+': '+(item.kind==='drawing'?'Enviou um desenho.':item.text));$('#unread').hidden=page==='chat';}render();}}});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>toast('O modo offline não ficou disponível neste navegador.'));
 window.sullyReady=true;$('#boot-loader').hidden=true;updateDate();loadMood();render();
 if(cloudConfig.enabled){

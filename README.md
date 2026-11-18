@@ -10,6 +10,7 @@ Sully: um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScr
 - Partilha pontual de localização mediante confirmação e permissão do navegador.
 - Contador pessoal de água e lembretes enquanto o site está aberto.
 - Histórico de check-ins e notas; exportação JSON.
+- Nome do perfil editável e nome de carinho privado para o par, em Ajustes. O nome de carinho fica apenas neste navegador, separado por conta e parceiro; não é enviado ao Firebase nem sincronizado entre dispositivos. Pode ser removido para voltar ao nome do perfil.
 - Manifest e service worker para abrir a interface offline após a primeira visita.
 
 **O site abre sem assumir a identidade de ninguém.** Inclui registo, login, recuperação de palavra-passe, perfil próprio, convite para ligar duas contas e escolhas individuais de partilha. O Firebase real está configurado em `config.js`, com Authentication por e-mail/palavra-passe e regras publicadas no Firestore.
