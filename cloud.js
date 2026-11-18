@@ -55,7 +55,7 @@ export async function connectCloud({ onAuth, onData, onPair, onError }) {
   },error=>{onError(error);resolve();}));
   await ready;
   function needUser(){if(!user)throw new Error('Entra na tua conta primeiro.');}
-  async function persistence(trust){if(trust!==trusted){localStorage.setItem('sully.trusted',trust?'yes':'no');return false;}await a.setPersistence(auth,trust?a.browserLocalPersistence:a.browserSessionPersistence);return true;}
+  async function persistence(trust){localStorage.setItem('sully.trusted',trust?'yes':'no');await a.setPersistence(auth,trust?a.browserLocalPersistence:a.browserSessionPersistence);return true;}
   return {
     async login(email,password,trust){if(!await persistence(trust))return{reload:true};await a.signInWithEmailAndPassword(auth,email,password);return{reload:false};},
     async signup(name,email,password,trust){

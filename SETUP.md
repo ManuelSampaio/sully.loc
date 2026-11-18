@@ -17,7 +17,7 @@ Endereço: `https://manuelsampaio.github.io/sully.loc/`.
 
 O objeto de configuração Web é público por natureza. Não colocar palavras-passe, service accounts ou credenciais administrativas no repositório. As regras do Firestore controlam o acesso.
 
-Se escolherem guardar dados num dispositivo de confiança, o site recarrega antes da primeira autenticação para inicializar a cache. Voltar a abrir o registo/login e introduzir os dados. A palavra-passe não é guardada pelo código do site.
+A opção de dispositivo de confiança guarda a sessão. A cache persistente de dados passa a ser inicializada na próxima abertura do site; na primeira entrada os dados ficam em memória. A palavra-passe não é guardada pelo código do site.
 
 ## 3. Criar os dois perfis
 
