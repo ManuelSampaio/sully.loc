@@ -1,0 +1,10 @@
+{
+  "name": "sully-notifications",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-18",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "sully-push", "database_id": "e588ea87-eafa-4ba8-ba95-3820cc062c25" }
+  ]
+}
