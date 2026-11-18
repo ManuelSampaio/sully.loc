@@ -1,6 +1,6 @@
 import { renderSky, skyState } from './sky.js';
-import { icon, mountIcons } from './icons.js';
-import { MOODS, MOOD_PERIODS, moodsForPeriod, QUICK, dayKey, period, effectiveStatus, waterAdd, validEvent, isDrawing } from './core.js';
+import { icon, mountIcons } from './icons.js?rev=period-moods';
+import { MOODS, MOOD_PERIODS, moodsForPeriod, QUICK, dayKey, period, effectiveStatus, waterAdd, validEvent, isDrawing } from './core.js?rev=period-moods';
 import { cloudConfig } from './config.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
