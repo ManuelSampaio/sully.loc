@@ -88,3 +88,8 @@
 :root[data-theme] .water-count b{color:var(--green)}
 :root[data-theme] .mode-banner,:root[data-theme] .history-item time{color:var(--muted)}
 :root[data-theme="dark"] .bubble img{background:#fff;border-radius:8px}
+
+.partner-alert{width:min(420px,calc(100% - 32px));text-align:center;padding:30px 26px;max-height:85dvh}.partner-alert .eyebrow{font-size:10px;letter-spacing:1.4px;margin:0 0 22px}.touch-symbol{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 18px;background:var(--selected);color:var(--accent);border-radius:50%}.touch-symbol .s-icon{width:27px;height:27px}.partner-alert h2{font-size:25px;margin-bottom:14px;overflow-wrap:anywhere}.partner-alert .touch-message{font-size:19px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 18px;color:var(--ink)}.partner-alert time{display:block}.partner-alert .primary{width:100%;margin-top:22px;min-height:46px}.partner-alert::backdrop{backdrop-filter:blur(5px)}
+:root[data-theme] .status-options button{background:var(--card);color:var(--ink)}
+:root[data-theme] .status-options button:hover{background:var(--field)}
+:root[data-theme] .status-options button.selected{background:var(--selected);color:var(--accent)}

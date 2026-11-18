@@ -13,7 +13,7 @@ export async function connectCloud({ onAuth, onData, onPair, onError }) {
   const emitProfiles=()=>onData('profiles',Object.values(profiles));
   function clearMember(uid){(memberUnsubs[uid]||[]).forEach(fn=>fn());delete memberUnsubs[uid];delete moods[uid];delete states[uid];delete locations[uid];}
   function emitPrivate(){onData('moods',Object.values(moods).flat());onData('members',Object.values(states));onData('locations',Object.values(locations));}
-  function stopRoom(){roomUnsubs.forEach(fn=>fn());roomUnsubs=[];Object.keys(memberUnsubs).forEach(clearMember);moods={};states={};locations={};pairId='';onData('events',[]);emitPrivate();}
+  function stopRoom(){roomUnsubs.forEach(fn=>fn());roomUnsubs=[];Object.keys(memberUnsubs).forEach(clearMember);moods={};states={};locations={};pairId='';onData('events',[],{reset:true});emitPrivate();}
   function watchPrivate(p,room,token){
     clearMember(p.id);memberUnsubs[p.id]=[];emitPrivate();
     const allow=key=>p.id===user?.uid||p.sharing?.[key]===true;
@@ -39,8 +39,9 @@ export async function connectCloud({ onAuth, onData, onPair, onError }) {
         },onError));
       }
     },onError));
+    let eventsReady=false;
     roomUnsubs.push(f.onSnapshot(f.query(f.collection(db,'pairs',nextId,'events'),f.orderBy('ts','desc'),f.limit(150)),{includeMetadataChanges:true},s=>{
-      if(token===generation)onData('events',s.docs.map(d=>({...d.data(),id:d.id,pending:d.metadata.hasPendingWrites})));
+      if(token===generation){onData('events',s.docs.map(d=>({...d.data(),id:d.id,pending:d.metadata.hasPendingWrites})),{baseline:!eventsReady});if(!s.metadata.fromCache)eventsReady=true;}
     },onError));
   }
   const ready=new Promise(resolve=>a.onAuthStateChanged(auth,next=>{

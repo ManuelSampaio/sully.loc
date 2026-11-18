@@ -8,6 +8,7 @@ Sully: um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScr
 - Faixa de sol e lua acompanhando a hora local, sem localização. Ciclo ilustrativo: sol das 6h às 18h, lua à noite.
 - Check-in com moods e perguntas próprios de manhã, tarde e noite, frase opcional e atualização do mesmo período. Os registos antigos continuam legíveis e editáveis; rascunhos por período são mantidos em memória durante a sessão.
 - Estados disponível, a trabalhar, a estudar, ocupado/a, em deslocação, a dormir e a descansar com duração. Dormir e descansar silenciam os avisos.
+- Toques recebidos com o site aberto aparecem num cartão sem resposta direta, até fechar. A fila espera enquanto escreves ou usas outro diálogo; dormir e descansar silenciam os avisos. Não confirma leitura nem envia alertas antigos ao entrar.
 - Mensagens rápidas editáveis, chat de texto, notas e desenhos com rato ou toque.
 - Partilha pontual de localização mediante confirmação e permissão do navegador.
 - Contador pessoal de água e lembretes enquanto o site está aberto.
