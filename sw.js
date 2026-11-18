@@ -1,5 +1,5 @@
-const CACHE = 'sully-shell-v3-status';
-const SHELL = ['./', './index.html', './style.css', './app.js', './core.js', './icons.js', './cloud.js', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'sully-shell-v3-sky';
+const SHELL = ['./', './index.html', './style.css', './app.js', './core.js', './icons.js', './sky.js', './cloud.js', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('sully-shell-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {

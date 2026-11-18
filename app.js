@@ -1,3 +1,4 @@
+import { renderSky, skyState } from './sky.js';
 import { icon, mountIcons } from './icons.js';
 import { MOODS, QUICK, dayKey, period, effectiveStatus, waterAdd, validEvent, isDrawing } from './core.js';
 import { cloudConfig } from './config.js';
@@ -121,8 +122,10 @@ $('#create-invite').onclick=()=>pairAction($('#create-invite'),()=>cloud.createI
 $('#join-invite').onclick=()=>pairAction($('#join-invite'),()=>cloud.joinInvite($('#invite-input').value.trim().toLowerCase()));
 $('#copy-invite').onclick=async()=>{try{await navigator.clipboard.writeText($('#invite-code').value);toast('Código copiado. Envia-o apenas ao teu par.');}catch{$('#invite-code').select();toast('Seleciona e copia o código.');}};
 
-function updateDate(){const d=new Date();$('#today').textContent=d.toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();$('#greeting').textContent={manha:'Bom dia.',tarde:'Boa tarde.',noite:'Boa noite.'}[period(d)];}
+function updateDate(){const d=new Date();renderSky($('#day-sky'),d);$('#today').textContent=d.toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();$('#greeting').textContent={manha:'Bom dia.',tarde:'Boa tarde.',noite:'Boa noite.'}[skyState(d).phase];}
 setInterval(()=>{updateDate();if(!me)return;const now=Date.now();if(prefs.waterMinutes && personal.nextWater && now>=personal.nextWater){personal.nextWater=now+prefs.waterMinutes*60000;savePersonal();notify('Uma pausa para beber um pouco de água? 💧');}const h=new Date().getHours();const p=h<14?'manha':h<20?'tarde':'noite';const ready=(h>=8&&h<12)||(h>=14&&h<18)||h>=20;const key=dayKey()+'_'+p;if(prefs.moodReminder&&ready&&personal.moodReminder!==key&&!data.moods.some(m=>m.from===me&&m.day===dayKey()&&m.period===p)){personal.moodReminder=key;savePersonal();notify('Se te apetecer, partilha como estás. ♡');}render();},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateDate();});
+window.addEventListener('pageshow',updateDate);
 window.addEventListener('online',()=>{reconnecting=true;setConnection(networkLabel());setTimeout(()=>{reconnecting=false;setConnection(networkLabel());},4000);});window.addEventListener('offline',()=>{reconnecting=false;setConnection(networkLabel());if(activeTasks.size)$('#loader-label').textContent='À espera de rede…';});window.addEventListener('storage',e=>{if(me&&e.key===localStateKey()){personal=read(localStateKey(),{});render();}if(!cloudConfig.enabled && e.key===KEY){const fresh=read(KEY,null);if(fresh?.members?.a&&fresh?.members?.b&&Array.isArray(fresh.events)&&Array.isArray(fresh.moods)){const previous=new Set(data.events.map(x=>x.id));data=fresh;for(const item of data.events)if(!previous.has(item.id)&&item.from!==me){notify(nameOf(item.from)+': '+(item.kind==='drawing'?'Enviou um desenho.':item.text));$('#unread').hidden=page==='chat';}render();}}});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>toast('O modo offline não ficou disponível neste navegador.'));
 window.sullyReady=true;$('#boot-loader').hidden=true;updateDate();loadMood();render();
