@@ -1,6 +1,6 @@
-const CACHE = 'sully-shell-v3-touch-alerts';
-const SHELL = ['./', './index.html', './style.css?rev=touch-alerts', './app.js?rev=touch-alerts', './core.js?rev=period-moods', './icons.js?rev=period-moods', './sky.js', './theme.js', './alerts.js', './cloud.js?rev=touch-alerts', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
-self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))));
+const CACHE = 'sully-shell-v3-core-flow';
+const SHELL = ['./', './index.html', './style.css?rev=core-flow', './app.js?rev=core-flow', './core.js?rev=period-moods', './icons.js?rev=period-moods', './sky.js', './theme.js', './alerts.js', './push.js', './messages.js', './pairing.js', './cloud.js?rev=core-flow', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
+self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('sully-shell-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;
@@ -9,4 +9,41 @@ self.addEventListener('fetch', e => {
     if (response.ok) { const copy = response.clone(); e.waitUntil(caches.open(CACHE).then(c => c.put(e.request, copy))); }
     return response;
   }).catch(() => caches.match(e.request)));
+});
+
+// Account binding is local and cleared before logout. Never cache Firebase tokens here.
+async function pushSession(){
+  const cache=await caches.open('sully-push-session-v1');
+  const response=await cache.match(new URL('__sully_push_session__',self.registration.scope).href);
+  try{return response?await response.json():null;}catch{return null;}
+}
+self.addEventListener('push',event=>event.waitUntil((async()=>{
+  let payload;try{payload=event.data?.json();}catch{return;}
+  if(!payload||typeof payload.eventId!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(payload.eventId))return;
+  const session=await pushSession();
+  if(!session?.enabled||!session.id||session.quietUntil===-1||session.quietUntil>Date.now())return;
+  const subscription=await self.registration.pushManager.getSubscription();
+  if(!subscription)return;
+  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(subscription.endpoint));
+  const id=btoa(String.fromCharCode(...new Uint8Array(hash))).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+  if(id!==session.id)return;
+  const latest=await pushSession();if(!latest?.enabled||latest.generation!==session.generation||latest.id!==session.id||latest.quietUntil===-1||latest.quietUntil>Date.now())return;
+  // Generic text also protects against a late packet after an account change.
+  await self.registration.showNotification('Sully',{
+    body:'Tens uma nova mensagem. Abre a Sully.',
+    icon:new URL('icons/icon-192.png',self.registration.scope).href,
+    badge:new URL('icons/icon-192.png',self.registration.scope).href,
+    tag:'sully-'+payload.eventId,
+    data:{url:self.registration.scope},
+  });
+})()));
+self.addEventListener('notificationclick',event=>{
+  event.notification.close();
+  event.waitUntil((async()=>{
+    const scope=self.registration.scope;
+    const tabs=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    const tab=tabs.find(client=>client.url.startsWith(scope));
+    if(tab){await tab.focus();return;}
+    await self.clients.openWindow(scope);
+  })());
 });

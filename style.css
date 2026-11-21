@@ -93,3 +93,74 @@
 :root[data-theme] .status-options button{background:var(--card);color:var(--ink)}
 :root[data-theme] .status-options button:hover{background:var(--field)}
 :root[data-theme] .status-options button.selected{background:var(--selected);color:var(--accent)}
+
+/* Primary flows: familiar navigation and a composer that follows the visible viewport. */
+:root{font-size:16px}
+p{font-size:1rem;line-height:1.65}
+h1,h2{font-family:inherit;font-weight:600;letter-spacing:-.035em}
+h1{font-size:1.9rem}h2,.settings-grid h2{font-size:1.25rem}
+.primary,.secondary,.text-button,.settings-grid label,.check-label{font-size:.875rem}
+.footnote,.message-meta,.chat-feedback{font-size:.8125rem;line-height:1.5}
+input,textarea,select{font-size:1rem}
+.sidebar .brand span{display:none}
+.sidebar nav button{font-size:.9375rem}
+.page-heading{margin:22px 0}
+.settings-grid{align-items:start}
+#pair-card{order:-3}#push-card{order:-2}
+#pair-card #pair-feedback:empty{display:none}
+#invite-result{padding:16px 0;border-top:1px solid var(--line);margin-top:18px}
+#invite-result #cancel-invite{width:100%;font-size:.875rem}
+#pair-actions label{font-size:.875rem}
+#invite-input{font-family:inherit;letter-spacing:normal}
+button:disabled{cursor:default}
+.chat-heading{display:flex;align-items:center;gap:12px;padding:16px 6px;border-bottom:1px solid var(--line);flex:none}
+.chat-heading h1{font-size:1.0625rem;letter-spacing:-.02em;margin:0 0 3px;line-height:1.4;overflow-wrap:anywhere}
+.chat-heading p{font-size:.8125rem;line-height:1.5;margin:0}
+.chat-card{position:relative}
+.new-messages{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);z-index:2;box-shadow:0 4px 20px #0001;white-space:nowrap}
+.load-history{align-self:center;flex:none}
+.retry-message{align-self:flex-end;color:var(--accent);padding:4px 0;font-size:.8125rem}
+.bubble{font-size:1rem}
+.message-meta{font-size:.75rem}
+.composer{background:var(--card);gap:8px;align-items:flex-end}
+.composer textarea{background:var(--field);border:1px solid var(--line);border-radius:22px;padding:10px 14px;min-height:44px;height:44px;max-height:120px;resize:none;overflow-y:auto;line-height:22px;font-size:16px}
+.composer .icon-button{width:44px;height:44px;flex:none;font-size:28px;line-height:1;padding:0;color:var(--accent)}
+.composer .primary{min-height:44px;font-size:.875rem;flex:none;padding:10px 14px;border-radius:22px}
+.chat-tools{flex:none;padding:6px 12px;gap:8px;justify-content:space-around;background:var(--field)}
+.chat-tools .text-button{font-size:.8125rem;margin:0}
+.chat-feedback{margin:0;padding:0 16px 8px;color:var(--muted);background:var(--card);flex:none}
+.chat-feedback:empty{display:none}
+body.chat-open{overflow:hidden;overscroll-behavior:none}
+body.chat-open .layout{position:fixed;left:0;right:0;top:var(--viewport-top,0px);height:var(--visible-height,100dvh);min-height:0;overflow:hidden}
+body.chat-open main{display:flex;flex-direction:column;height:100%;min-height:0;padding-bottom:18px}
+body.chat-open header{flex:none;height:60px}
+body.chat-open .mode-banner,body.chat-open .day-sky{display:none}
+body.chat-open #page-chat{display:flex;flex-direction:column;flex:1;min-height:0;margin:0}
+body.chat-open .chat-card{display:flex;flex-direction:column;flex:1;min-height:0;border-top:0;border-radius:0 0 14px 14px}
+body.chat-open .messages{flex:1;min-height:0;height:auto;max-height:none;overflow-y:auto;overflow-anchor:none;-webkit-overflow-scrolling:touch;padding:16px;gap:14px}
+body.chat-open .message{flex:none;max-width:85%}
+body.chat-open .composer{flex:none}
+body.chat-open .toast{bottom:100px}
+@media(max-width:760px){
+ .sidebar nav button{font-size:.75rem;min-height:60px}.sidebar{height:calc(65px + env(safe-area-inset-bottom))}
+ .mode-banner{font-size:.75rem}.mode-banner #connection{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .status-heading h2{font-size:.9375rem}.status-heading #current-status{font-size:.8125rem}
+ .status-options button,.quick-tile{font-size:.875rem}
+ .moods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .moods button{font-size:.8125rem;min-height:70px;padding:8px 4px}
+ .mood-question,.period-tabs button{font-size:.875rem}
+ .partner-card #partner-mood,.partner-card .status-pill{font-size:.8125rem}
+ .partner-card h2{font-family:inherit;font-size:1.0625rem}
+ .settings-grid .card{padding:20px}
+ body.chat-open main{padding:env(safe-area-inset-top) 0 calc(65px + env(safe-area-inset-bottom));margin:0}
+ body.chat-open header{height:52px;padding:0 16px}
+ body.chat-open .chat-heading{padding:10px 16px}
+ body.chat-open .chat-card{border:0;border-radius:0}
+ body.chat-open .composer{padding:8px 8px 10px}
+ body.chat-open .chat-feedback{padding-bottom:6px}
+ body.chat-open.keyboard-open .sidebar{display:none}
+ body.chat-open.keyboard-open main{padding-bottom:0}
+ body.chat-open.keyboard-open header{display:none}
+ body.chat-open .toast{bottom:calc(145px + env(safe-area-inset-bottom))}
+}
+@media(prefers-reduced-motion:reduce){.new-messages{scroll-behavior:auto}}

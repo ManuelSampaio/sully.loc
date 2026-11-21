@@ -1,7 +1,10 @@
 import {before,after,beforeEach,test} from 'node:test';
+import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
 import {doc,setDoc,getDoc,getDocs,collection,updateDoc,writeBatch,runTransaction} from 'firebase/firestore';
+import * as sdk from 'firebase/firestore';
+import {pairingActions} from '../pairing.js';
 let env;
 const code='0123456789abcdef0123456789abcdef';
 const profile=(uid,sharing={mood:false,status:false,location:false})=>({id:uid,name:uid,pairId:'',sharing,ts:1});
@@ -43,4 +46,46 @@ test('moods novos pertencem ao período certo e os antigos continuam editáveis'
  await assertFails(write('manha','paz'));
  await assertFails(write('noite','desconhecido'));
  for(const period of ['manha','tarde','noite'])await assertSucceeds(write(period,'radiante'));
+});
+
+const actions=(store,uid,nextCode)=>pairingActions({db:store,sdk,getUid:()=>uid,newCode:()=>nextCode});
+test('cancelar o próprio convite permite aceitar outro e invalida o código antigo',async()=>{
+ const alice=await register('alice'),bob=await register('bob'),third=await register('third'),second='b'.repeat(32);
+ const a=actions(alice,'alice',code),b=actions(bob,'bob',second);
+ await a.createInvite();await b.createInvite();await assertSucceeds(a.cancelInvite());
+ assert.equal((await getDoc(doc(alice,'profiles','alice'))).data().pairId,'');
+ await assertFails(getDoc(doc(third,'pairs',code)));
+ await assertSucceeds(a.joinInvite(second));
+ assert.deepEqual((await getDoc(doc(bob,'pairs',second))).data().members,['bob','alice']);
+});
+test('dois convites pendentes são substituídos atomicamente ao aceitar o outro',async()=>{
+ const alice=await register('alice'),bob=await register('bob'),second='b'.repeat(32);
+ const a=actions(alice,'alice',code),b=actions(bob,'bob',second);
+ await a.createInvite();await b.createInvite();
+ await assertSucceeds(a.joinInvite(`https://manuelsampaio.github.io/sully.loc/?invite=${second}`));
+ assert.equal((await getDoc(doc(alice,'pairs',code))).data().revoked,true);
+ assert.equal((await getDoc(doc(alice,'profiles','alice'))).data().pairId,second);
+ await assertFails(getDoc(doc(bob,'pairs',code)));
+ await assert.rejects(b.cancelInvite(),/já foi aceite/);
+});
+test('não se pode limpar o perfil sem revogar o convite, nem cancelar um convite alheio',async()=>{
+ const alice=await register('alice'),bob=await register('bob');await invite(alice,'alice');
+ await assertFails(updateDoc(doc(alice,'profiles','alice'),{pairId:''}));
+ await assertFails(updateDoc(doc(alice,'pairs',code),{revoked:true}));
+ const batch=writeBatch(bob);batch.update(doc(bob,'pairs',code),{revoked:true});batch.update(doc(bob,'profiles','bob'),{pairId:''});await assertFails(batch.commit());
+});
+test('um convite revogado não pode ser reativado ou aceite por outra conta',async()=>{
+ const alice=await register('alice'),bob=await register('bob');const a=actions(alice,'alice',code);await a.createInvite();await a.cancelInvite();
+ await assertFails(updateDoc(doc(alice,'pairs',code),{revoked:false}));
+ const batch=writeBatch(bob);batch.set(doc(bob,'pairs',code),{members:['alice','bob'],createdBy:'alice',ts:1});batch.update(doc(bob,'profiles','bob'),{pairId:code});await assertFails(batch.commit());
+});
+test('uma ligação já aceite não pode ser cancelada pelo fluxo de convites',async()=>{
+ const {alice,bob}=await couple();await assert.rejects(actions(alice,'alice',code).cancelInvite(),/já foi aceite/);
+ const batch=writeBatch(alice);batch.update(doc(alice,'pairs',code),{revoked:true});batch.update(doc(alice,'profiles','alice'),{pairId:''});await assertFails(batch.commit());
+ assert.equal((await getDoc(doc(bob,'pairs',code))).data().members.length,2);
+});
+test('aceitar um convite inválido conserva o convite pendente anterior',async()=>{
+ const alice=await register('alice');const a=actions(alice,'alice',code);await a.createInvite();
+ await assert.rejects(a.joinInvite('invalid'));assert.equal((await getDoc(doc(alice,'profiles','alice'))).data().pairId,code);
+ await assert.rejects(a.joinInvite(code),/teu convite/);
 });

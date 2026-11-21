@@ -4,7 +4,7 @@ Sully: um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScr
 
 ## Versão 0.3
 
-- Aspeto pessoal em Ajustes: Automático (claro das 6h às 18h), Claro ou Escuro e quatro cores de destaque. Preferência por conta neste navegador, sem alterar o parceiro.
+- Aspeto pessoal no Perfil: Automático (claro das 6h às 18h), Claro ou Escuro e quatro cores de destaque. Preferência por conta neste navegador, sem alterar o parceiro.
 - Faixa de sol e lua acompanhando a hora local, sem localização. Ciclo ilustrativo: sol das 6h às 18h, lua à noite.
 - Check-in com moods e perguntas próprios de manhã, tarde e noite, frase opcional e atualização do mesmo período. Os registos antigos continuam legíveis e editáveis; rascunhos por período são mantidos em memória durante a sessão.
 - Estados disponível, a trabalhar, a estudar, ocupado/a, em deslocação, a dormir e a descansar com duração. Dormir e descansar silenciam os avisos.
@@ -13,7 +13,7 @@ Sully: um site pensado para dois e primeiro para telemóvel. HTML, CSS e JavaScr
 - Partilha pontual de localização mediante confirmação e permissão do navegador.
 - Contador pessoal de água e lembretes enquanto o site está aberto.
 - Histórico de check-ins e notas; exportação JSON.
-- Nome do perfil editável e nome de carinho privado para o par, em Ajustes. O nome de carinho fica apenas neste navegador, separado por conta e parceiro; não é enviado ao Firebase nem sincronizado entre dispositivos. Pode ser removido para voltar ao nome do perfil.
+- Nome do perfil editável e nome de carinho privado para o par, no Perfil. O nome de carinho fica apenas neste navegador, separado por conta e parceiro; não é enviado ao Firebase nem sincronizado entre dispositivos. Pode ser removido para voltar ao nome do perfil.
 - Manifest e service worker para abrir a interface offline após a primeira visita.
 
 **O site abre sem assumir a identidade de ninguém.** Inclui registo, login, recuperação de palavra-passe, perfil próprio, convite para ligar duas contas e escolhas individuais de partilha. O Firebase real está configurado em `config.js`, com Authentication por e-mail/palavra-passe e regras publicadas no Firestore.
@@ -31,16 +31,16 @@ Abrir `http://localhost:3000`. Para publicar no GitHub Pages e ligar os dois, se
 
 ## Limites conhecidos
 
-- Notificações e lembretes dependem de o site continuar aberto; não há servidor de Web Push nesta versão. Navegadores podem suspender temporizadores em segundo plano.
+- Web Push usa o Worker Cloudflare e exige ativação individual em cada dispositivo. No iPhone, requer a instalação no ecrã principal. Lembretes de água e mood continuam a depender do site aberto. A entrega e a apresentação dependem do sistema operativo. O envio push é iniciado pelo remetente após confirmação do Firestore; fechar a página nesse intervalo pode impedir o aviso, sem perder a mensagem.
 - Localização é uma posição guardada na conversa, nunca rastreio contínuo. Não existe sobreposição automática noutras aplicações.
 - Os dados não têm encriptação ponta a ponta. Firebase usa autenticação e regras de acesso; o proprietário do projeto tem acesso administrativo.
-- O modo online apresenta as 150 mensagens e 180 check-ins mais recentes. Os documentos anteriores continuam no Firebase.
+- A conversa carrega as 40 mensagens mais recentes e permite carregar páginas anteriores de 40. Check-ins mantêm o limite de 90 por membro. Os documentos anteriores continuam no Firebase.
 - Dados offline privados só são persistidos após a escolha de dispositivo de confiança. Sair limpa a cache Firestore; fechar outros separadores pode ser necessário.
 - A integração online precisa de validação com contas de teste num projeto Firebase real antes de usar dados pessoais. O projeto Sully está no plano Spark, com Firestore Standard em africa-south1. As regras têm testes próprios num emulador local.
 
 ## Interface
 
-Interface inicial reduzida a estado do par, estado pessoal, humor e mensagens rápidas. Três destinos na navegação: Hoje, Conversa e Ajustes. Desenhos ficam na conversa e o histórico tem acesso no ecrã Hoje; água e lembretes ficam em Ajustes.
+Interface inicial reduzida a estado do par, estado pessoal, humor e mensagens rápidas. Três destinos na navegação: Hoje, Conversa e Perfil. Desenhos ficam na conversa e o histórico tem acesso no ecrã Hoje; água e lembretes ficam no Perfil.
 
 Inclui ícones PNG 192/512 e apple-touch-icon 180, campos de texto com 16 px para evitar zoom automático no iPhone, margens seguras e altura da conversa adaptada à área visível.
 
@@ -63,3 +63,16 @@ Uma operação demorada permite ocultar o indicador enquanto aguarda. Os ecrãs 
 
 
 Validação da ativação: registo e login de duas contas temporárias, convite, mensagens nos dois sentidos e regras de partilha verificados contra o serviço real. As contas usadas no teste são eliminadas no fim; os documentos de teste não contêm dados pessoais.
+
+## Quatro fluxos prioritários — 21/11/2026
+
+Versão mantida em 0.3.0. Sem migração de fornecedor ou nova integração de analytics.
+
+- Conversa: escrita fixa na área visível, altura adaptável, histórico com paginação, preservação da posição de leitura, rascunho por conta e espaço durante a sessão, estados de envio e nova tentativa com o mesmo identificador. “Enviada” significa confirmação do Firestore, não leitura pelo parceiro.
+- Notificações: cliente ligado ao Worker/D1 existente, autorização explícita, texto genérico, silêncio por descanso, subscrição revogada ao sair e fila de tentativas sem conteúdo privado. Detalhes em [notifications/README.md](./notifications/README.md).
+- Navegação: Hoje, Conversa e Perfil; anexos recolhidos no botão + da conversa; configurações técnicas ocultas do percurso normal.
+- Contas e ligação: cada pessoa mantém a sua identidade; código ou link de convite, cancelamento do próprio convite pendente e substituição atómica ao aceitar outro. Códigos cancelados ficam revogados; ligações já aceites não são desfeitas por esse fluxo.
+
+Validação desta alteração: 22 testes de lógica/cliente, 9 do serviço push e 15 de regras Firestore aprovados. Os testes de regras usam o emulador e as funções de transação usadas em produção. Regras publicadas no projeto Firebase. Interface exercitada em navegador com dados fictícios a 390 e 360 px e altura reduzida de 460 px, incluindo envio, rascunho, histórico e cancelamento. Isto não substitui teste físico do teclado Safari/iOS e Chrome/Android nem uma entrega push real entre os dois telemóveis.
+
+Estrutura preservada por conta e por espaço, sem UIDs fixos. As regras limitam cada espaço a duas pessoas e isolam os pares. A paginação evita descarregar toda a conversa. Os planos gratuitos têm quotas: esta alteração não promete utilização ilimitada nem elimina a futura necessidade de rever custos e capacidade.

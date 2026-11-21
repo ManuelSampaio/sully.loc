@@ -8,22 +8,23 @@ Backend separado do site GitHub Pages. Mantém a versão do produto em 0.3.0.
 2. D1 `sully-push` ligado ao Worker pelo binding **DB**.
 3. Em **Edit code**, substituir todo o conteúdo de `worker.js` pelo ficheiro `notifications/worker.js` deste repositório e clicar **Deploy**. O ficheiro já inclui as bibliotecas; não requer imports externos nem flags Node.
 4. Abrir a raiz do Worker. O resultado esperado é `{"service":"Sully notifications","database":"connected","configured":true}`. Isto confirma o código e o binding; ainda não confirma uma entrega push.
-5. Integrar o cliente GitHub Pages, service worker e ativação em cada dispositivo. Esta etapa ainda está pendente neste commit: o frontend atual continua a oferecer apenas os avisos com o site aberto.
+5. No site GitHub Pages, cada pessoa entra na sua conta, liga o seu par e abre **Perfil → Notificações do teu par → Ativar neste dispositivo**. No iPhone, abrir a Sully instalada no ecrã principal (iOS 16.4+). Autorizar no pedido do sistema. Repetir no outro telemóvel.
+6. Com a Sully fechada no destinatário, enviar uma mensagem ou toque no outro telemóvel. Verificar o aviso, abrir pelo aviso, testar A dormir/Sesta e testar Terminar sessão. A apresentação e o som dependem do sistema operativo.
 
 As tabelas são criadas automaticamente no primeiro pedido autenticado. Não executar SQL manualmente nem copiar chaves privadas para o site. As chaves VAPID são geradas no próprio Worker e persistidas apenas no D1. O endpoint autenticado `/v1/key` devolve exclusivamente a chave pública. Administradores da conta Cloudflare podem consultar o D1; guardar a conta e cópias da base com as mesmas precauções de outros segredos do servidor.
 
-## Contrato do cliente a integrar
+## Contrato do cliente
 
 - Origem permitida: `https://manuelsampaio.github.io`.
 - Todos os endpoints `/v1/*` exigem `Authorization: Bearer <Firebase ID token>` de `sully-97787` e duas contas já associadas. Pedidos que modificam dados exigem também essa origem e JSON.
 - `GET /v1/key`: `{publicKey}` para PushManager.
-- `POST /v1/subscriptions`: `{subscription,preview:false}` ativa apenas o dispositivo autenticado; devolve `{enabled,id,quietUntil}`. O texto das mensagens fica oculto por defeito.
+- `POST /v1/subscriptions`: `{subscription,preview:false}` ativa apenas o dispositivo autenticado; devolve `{enabled,id,quietUntil}`. O cliente envia sempre `preview:false`: o texto fica oculto no ecrã bloqueado.
 - `DELETE /v1/subscriptions`: `{id}` remove apenas uma subscrição da própria conta. O cliente deve também executar `PushSubscription.unsubscribe()` ao desativar avisos ou terminar sessão, incluindo se o serviço estiver indisponível.
 - `POST /v1/preferences`: `{}` sincroniza o estado de descanso a partir do Firestore com o token do próprio utilizador, mesmo que o estado esteja privado para o parceiro. `{id,preview:true|false}` atualiza opcionalmente a pré-visualização de um dispositivo próprio.
 - Sincronizar preferências ao entrar, ao regressar ao site e depois da confirmação de gravação de cada estado. Se falhar, informar que o silêncio dos avisos externos não ficou confirmado. `quietUntil=-1` significa descanso sem prazo; um prazo positivo expira automaticamente.
 - `POST /v1/send`: `{eventId}` depois de o Firestore confirmar a gravação do evento. O serviço lê o evento, autor, par e destinatário no Firestore com o token do remetente; não aceita destinatário ou texto arbitrários. Aceita eventos criados há até 5 minutos, usando o `createTime` do servidor. Não envia localização, imagem ou mood privado.
 - O cliente deve tentar novamente uma falha transitória de envio dentro desse prazo, usando o mesmo ID. A entrega é deduplicada por evento e dispositivo. O envio é iniciado pelo cliente remetente: fechar a página antes da chamada pode impedir o aviso, embora a mensagem continue guardada no Firestore.
-- O service worker deve mostrar uma notificação sem resposta direta, usar apenas um destino dentro do âmbito `/sully.loc/` ao tocar e limpar avisos da sessão ao sair. Não duplicar avisos de sistema recebidos simultaneamente pelo Firestore.
+- O service worker mostra texto genérico, sem resposta direta. Ignora o texto e destinos recebidos no payload; só abre o âmbito `/sully.loc/`. Confirma a subscrição atual contra o identificador do dispositivo, a sessão local e o silêncio antes de mostrar o aviso. A saída limpa os avisos apresentados e revoga a subscrição antes de terminar a sessão Firebase. Mensagens recebidas pelo Firestore só produzem avisos dentro do site, para evitar duplicação dos avisos de sistema.
 
 ## Segurança e limites
 

@@ -3,7 +3,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signed() { return request.auth != null; }
     function text(v,max) { return v is string && v.size() <= max; }
-    function member(pair) { return signed() && request.auth.uid in get(/databases/$(database)/documents/pairs/$(pair)).data.members; }
+    function member(pair) { return signed() && request.auth.uid in get(/databases/$(database)/documents/pairs/$(pair)).data.members && !get(/databases/$(database)/documents/pairs/$(pair)).data.get('revoked',false); }
+    function pendingOwner(pair) { let r=get(/databases/$(database)/documents/pairs/$(pair)).data;return r.createdBy == request.auth.uid && r.members == [request.auth.uid] && !r.get('revoked',false); }
+    function releasedPending(pair) { return pendingOwner(pair) && getAfter(/databases/$(database)/documents/pairs/$(pair)).data.get('revoked',false) == true; }
     function shared(uid,key) { return request.auth.uid == uid || get(/databases/$(database)/documents/profiles/$(uid)).data.sharing[key] == true; }
     function profileValid(uid) {
       let p = request.resource.data;
@@ -20,23 +22,29 @@ service cloud.firestore {
       allow get: if signed() && (request.auth.uid == uid || (resource.data.pairId != '' && member(resource.data.pairId)));
       allow create: if signed() && request.auth.uid == uid && profileValid(uid) && request.resource.data.pairId == '';
       allow update: if signed() && request.auth.uid == uid && profileValid(uid)
-        && (resource.data.pairId == '' || request.resource.data.pairId == resource.data.pairId);
+        && (resource.data.pairId == '' || request.resource.data.pairId == resource.data.pairId || releasedPending(resource.data.pairId));
     }
     match /pairs/{pair} {
       // Um convite aberto só pode ser consultado pelo ID secreto completo. Listagens são proibidas.
-      allow get: if signed() && (request.auth.uid in resource.data.members || resource.data.members.size() == 1);
+      allow get: if signed() && (request.auth.uid in resource.data.members || (resource.data.members.size() == 1 && !resource.data.get('revoked',false)));
       allow create: if signed() && pair.matches('^[a-f0-9]{32}$')
         && request.resource.data.keys().hasOnly(['members','createdBy','ts'])
         && request.resource.data.members == [request.auth.uid]
         && request.resource.data.createdBy == request.auth.uid && request.resource.data.ts is number
         && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId == pair;
-      allow update: if signed() && resource.data.members.size() == 1
+      allow update: if signed() && !resource.data.get('revoked',false) && resource.data.members.size() == 1
         && !(request.auth.uid in resource.data.members)
         && request.resource.data.keys().hasOnly(['members','createdBy','ts'])
         && request.resource.data.members == [resource.data.members[0],request.auth.uid]
         && request.resource.data.createdBy == resource.data.createdBy && request.resource.data.ts == resource.data.ts
-        && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId == ''
+        && (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId == '' || releasedPending(get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId))
         && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId == pair;
+      allow update: if signed() && pendingOwner(pair)
+        && request.resource.data.keys().hasOnly(['members','createdBy','ts','revoked'])
+        && request.resource.data.members == resource.data.members
+        && request.resource.data.createdBy == resource.data.createdBy && request.resource.data.ts == resource.data.ts
+        && request.resource.data.revoked == true
+        && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId != pair;
       match /states/{uid} {
         allow read: if member(pair) && shared(uid,'status');
         allow create, update: if member(pair) && request.auth.uid == uid
