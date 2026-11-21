@@ -88,3 +88,14 @@ test('notification taps open only the Sully scope and focus an existing Sully wi
  let focused=false;f.clients.opened=null;f.clients.matchAll=async()=>[{url:'https://manuelsampaio.github.io/another-site/',async focus(){throw Error('wrong site');}},{url:scope+'?open=chat',async focus(){focused=true;}}];
  f.handlers.notificationclick({notification:{close(){}},waitUntil:task=>{pending=task;}});await pending;assert(focused);assert.equal(f.clients.opened,null);
 });
+
+test('check-in references queue without private mood, note or coordinates and are deduplicated',async()=>{
+ const f=fixture();f.session();await settle();f.env.navigator.onLine=false;
+ f.controller.sendActivity('mood','a_2026-11-21_man ha'.replace(' ',''),123,'a');f.controller.sendActivity('mood','a_2026-11-21_man ha'.replace(' ',''),123,'a');
+ const queued=JSON.parse(f.storage.getItem('sully.push.outbox.a'));assert.equal(queued.length,1);assert.deepEqual(queued[0].activity,{type:'mood',id:'a_2026-11-21_manha',revision:123});
+ f.env.navigator.onLine=true;await f.controller.refresh();await settle();assert.deepEqual(f.requests.find(r=>r.path==='/v1/send').body,{activity:queued[0].activity});
+});
+test('background notices identify shared check-ins without displaying payload content',async()=>{
+ const f=await workerFixture();await f.gate({});await f.push({eventId:'mood-event',category:'mood',body:'private note'});assert.equal(f.shown[0].options.body,'O teu par partilhou ou atualizou um check-in. Abre a Sully.');
+ await f.push({eventId:'other-event',category:'<script>'});assert.equal(f.shown[1].options.body,'Tens uma nova mensagem. Abre a Sully.');
+});

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/core.test.js tests/alerts.test.js tests/push.test.js tests/messages.test.js",
+    "test": "node --test tests/core.test.js tests/alerts.test.js tests/push.test.js tests/messages.test.js tests/activity.test.js",
     "dev": "node scripts/dev.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-sully-loc \"node --test tests/rules.test.js\""
   },

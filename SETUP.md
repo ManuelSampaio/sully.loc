@@ -65,7 +65,7 @@ Depois testar num projeto real, com contas de teste:
 
 Verificar escrita, teclado, botão Enviar e desenho nos dois aparelhos. Há ícones PNG de 192/512 px e apple-touch-icon de 180 px.
 
-**Web Push está ligado ao Worker Cloudflare/D1.** Depois de ligarem as contas, cada um abre **Perfil → Notificações do teu par → Ativar neste dispositivo** e autoriza o pedido do sistema. No iPhone, requer iOS 16.4+ e abertura pelo ícone instalado no ecrã principal. O texto das mensagens fica oculto nos avisos. Os lembretes periódicos de água e mood continuam a funcionar apenas com o site aberto. Consultar [notifications/README.md](./notifications/README.md) para limites e teste físico.
+**Web Push está ligado ao Worker Cloudflare/D1.** Depois de ligarem as contas, cada um abre **Perfil → Notificações → Ativar neste dispositivo** e autoriza o pedido do sistema. No iPhone, requer iOS 16.4+ e abertura pelo ícone instalado no ecrã principal. O texto das mensagens fica oculto nos avisos. Os lembretes periódicos de água e mood continuam a funcionar apenas com o site aberto. Consultar [notifications/README.md](./notifications/README.md) para limites e teste físico.
 
 A interface local pode abrir offline depois de uma primeira visita. O modo de conta depende também de o SDK Firebase externo ter sido carregado e da escolha de persistência feita no login.
 
@@ -74,3 +74,5 @@ A interface local pode abrir offline depois de uma primeira visita. O modo de co
 - [Contas por e-mail e palavra-passe](https://firebase.google.com/docs/auth/web/password-auth)
 - [Regras com getAfter e operações atómicas](https://firebase.google.com/docs/firestore/security/rules-conditions)
 - [Persistência offline](https://firebase.google.com/docs/firestore/manage-data/enable-offline)
+
+O Perfil organiza os controlos por categoria. A criação/aceitação de convites fica em **O nosso espaço** e as permissões em **Privacidade**. Avisos de check-in, estado e localização usam a versão do Worker que devolve `activities:true`; ver os passos de publicação em `notifications/README.md`.

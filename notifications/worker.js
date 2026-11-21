@@ -332,6 +332,14 @@ async function buildPushPayload(message, subscription, vapid) {
   };
 }
 
+// ../activity.js
+var ACTIVITY_TYPES = ["mood", "status", "location"];
+var noticeText = { message: "Tens uma nova mensagem.", quick: "Recebeste um toque do teu par.", note: "O teu par partilhou uma nota.", drawing: "O teu par enviou um desenho.", mood: "O teu par partilhou ou atualizou um check-in.", status: "O teu par atualizou o estado.", location: "O teu par partilhou a localiza\xE7\xE3o." };
+function activityRequest(type, id, revision) {
+  if (!ACTIVITY_TYPES.includes(type) || typeof id !== "string" || !id || id.length > 200 || id.includes("/") || !Number.isFinite(revision)) throw new Error("Atividade inv\xE1lida.");
+  return { activity: { type, id, revision } };
+}
+
 // worker-source.js
 var ORIGIN = "https://manuelsampaio.github.io";
 var PROJECT = "sully-97787";
@@ -416,7 +424,7 @@ function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Dat
     if (optional && response.status === 404) return null;
     requireThat(response.ok, response.status === 401 ? 401 : response.status === 403 ? 403 : 503, "Unable to verify account");
     const document = await response.json();
-    return { data: Object.fromEntries(Object.entries(document.fields || {}).map(([k, v]) => [k, field(v)])), createdAt: Date.parse(document.createTime) };
+    return { data: Object.fromEntries(Object.entries(document.fields || {}).map(([k, v]) => [k, field(v)])), createdAt: Date.parse(document.createTime), updatedAt: Date.parse(document.updateTime || document.createTime) };
   }
   async function account(request) {
     const token = (request.headers.get("Authorization") || "").match(/^Bearer ([^\s]+)$/)?.[1];
@@ -506,7 +514,7 @@ function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Dat
         if (path === "/" && request.method === "GET") {
           requireThat(env.DB, 503, "Database binding DB is missing");
           await env.DB.prepare("SELECT 1 AS ready").first();
-          return response({ service: "Sully notifications", database: "connected", configured: true });
+          return response({ service: "Sully notifications", database: "connected", configured: true, activities: true });
         }
         requireThat(["/v1/key", "/v1/subscriptions", "/v1/preferences", "/v1/send"].includes(path), 404, "Not found");
         requireThat(path === "/v1/key" && request.method === "GET" || path === "/v1/subscriptions" && ["POST", "DELETE"].includes(request.method) || ["/v1/preferences", "/v1/send"].includes(path) && request.method === "POST", 405, "Method not allowed");
@@ -544,10 +552,32 @@ function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Dat
           }
           return response({ quietUntil: quiet });
         }
-        requireThat(Object.keys(input).length === 1 && typeof input.eventId === "string" && /^[a-zA-Z0-9_-]{1,100}$/.test(input.eventId), 400, "Event ID required");
-        const event = await getDocument(`pairs/${user.pairId}/events/${input.eventId}`, user.token);
-        requireThat(event.data.from === user.uid && event.data.id === input.eventId && ["quick", "text", "note", "drawing"].includes(event.data.kind), 403, "Cannot send this event");
-        requireThat(Number.isFinite(event.createdAt) && event.createdAt >= now() - 3e5 && event.createdAt <= now() + 3e4, 409, "Event expired");
+        let event = null, deliveryId, category;
+        if (Object.keys(input).length === 1 && typeof input.eventId === "string") {
+          requireThat(/^[a-zA-Z0-9_-]{1,100}$/.test(input.eventId), 400, "Event ID required");
+          event = await getDocument(`pairs/${user.pairId}/events/${input.eventId}`, user.token);
+          requireThat(event.data.from === user.uid && event.data.id === input.eventId && ["quick", "text", "note", "drawing"].includes(event.data.kind), 403, "Cannot send this event");
+          requireThat(Number.isFinite(event.createdAt) && event.createdAt >= now() - 3e5 && event.createdAt <= now() + 3e4, 409, "Event expired");
+          deliveryId = input.eventId;
+          category = event.data.kind === "text" ? "message" : event.data.kind;
+        } else {
+          requireThat(Object.keys(input).length === 1 && input.activity && Object.keys(input.activity).length === 3, 400, "Activity required");
+          let action;
+          try {
+            action = activityRequest(input.activity.type, input.activity.id, input.activity.revision).activity;
+          } catch {
+            throw new HttpError(400, "Invalid activity");
+          }
+          if (user.profile.sharing?.[action.type] !== true) return response({ sent: 0, private: true });
+          const ownId = encodeURIComponent(user.uid), id = encodeURIComponent(action.id);
+          const suffix = action.type === "mood" ? `moods/${ownId}/entries/${id}` : action.type === "status" ? `states/${ownId}` : `locations/${ownId}`;
+          if (action.type !== "mood") requireThat(action.id === user.uid, 403, "Cannot send this activity");
+          const saved = await getDocument(`pairs/${user.pairId}/${suffix}`, user.token);
+          requireThat(saved.data.id === action.id && (action.type === "status" || saved.data.from === user.uid) && saved.data.ts === action.revision, 409, "Activity changed");
+          requireThat(Number.isFinite(saved.updatedAt) && saved.updatedAt >= now() - 3e5 && saved.updatedAt <= now() + 3e4, 409, "Activity expired");
+          deliveryId = "activity_" + b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${user.pairId}:${suffix}:${saved.updatedAt}`)));
+          category = action.type;
+        }
         const partner = await getDocument(`profiles/${encodeURIComponent(user.recipient)}`, user.token);
         requireThat(partner.data.pairId === user.pairId && partner.data.id === user.recipient, 403, "Partner is not connected");
         const preferences = await db.prepare("SELECT quiet_until FROM push_preferences WHERE uid=? AND pair_id=?").bind(user.recipient, user.pairId).first();
@@ -557,14 +587,14 @@ function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Dat
         const vapid = await keyPair(db);
         let sent = 0, retry = false;
         for (const device of devices.results) {
-          const claimed = await db.prepare("INSERT OR IGNORE INTO push_deliveries(pair_id,event_id,device_id,created_at) VALUES(?,?,?,?)").bind(user.pairId, input.eventId, device.id, now()).run();
+          const claimed = await db.prepare("INSERT OR IGNORE INTO push_deliveries(pair_id,event_id,device_id,created_at) VALUES(?,?,?,?)").bind(user.pairId, deliveryId, device.id, now()).run();
           if (!claimed.meta.changes) continue;
           let permanent = false;
           try {
             const subscription = await validateSubscription(JSON.parse(device.subscription));
-            const text = event.data.kind === "drawing" ? "Partilhou um desenho contigo." : String(event.data.text || "Enviou-te uma mensagem.").slice(0, 500);
-            const payload = { title: "Sully", body: device.preview ? `${String(user.profile.name).slice(0, 40)}: ${text}` : "Tens uma nova mensagem. Abre a Sully.", eventId: input.eventId, ts: now() };
-            const message = await buildPushPayload({ data: JSON.stringify(payload), options: { ttl: 300, urgency: "normal", topic: input.eventId.replaceAll("-", "").slice(0, 32) } }, subscription, vapid);
+            const text = event?.data.kind === "drawing" ? "Partilhou um desenho contigo." : String(event?.data.text || "Enviou-te uma mensagem.").slice(0, 500);
+            const payload = { title: "Sully", body: event && device.preview ? `${String(user.profile.name).slice(0, 40)}: ${text}` : noticeText[category] + " Abre a Sully.", category, eventId: deliveryId, ts: now() };
+            const message = await buildPushPayload({ data: JSON.stringify(payload), options: { ttl: 300, urgency: "normal", topic: deliveryId.replaceAll("-", "").slice(0, 32) } }, subscription, vapid);
             const result = await fetchImpl(subscription.endpoint, { ...message, redirect: "error", signal: AbortSignal.timeout(8e3) });
             if (result.ok) {
               sent++;
@@ -576,7 +606,7 @@ function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Dat
           }
           if (!permanent) {
             retry = true;
-            await db.prepare("DELETE FROM push_deliveries WHERE pair_id=? AND event_id=? AND device_id=?").bind(user.pairId, input.eventId, device.id).run();
+            await db.prepare("DELETE FROM push_deliveries WHERE pair_id=? AND event_id=? AND device_id=?").bind(user.pairId, deliveryId, device.id).run();
           }
         }
         return response({ sent, retry }, retry ? 503 : 200);

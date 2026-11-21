@@ -76,3 +76,11 @@ Versão mantida em 0.3.0. Sem migração de fornecedor ou nova integração de a
 Validação desta alteração: 22 testes de lógica/cliente, 9 do serviço push e 15 de regras Firestore aprovados. Os testes de regras usam o emulador e as funções de transação usadas em produção. Regras publicadas no projeto Firebase. Interface exercitada em navegador com dados fictícios a 390 e 360 px e altura reduzida de 460 px, incluindo envio, rascunho, histórico e cancelamento. Isto não substitui teste físico do teclado Safari/iOS e Chrome/Android nem uma entrega push real entre os dois telemóveis.
 
 Estrutura preservada por conta e por espaço, sem UIDs fixos. As regras limitam cada espaço a duas pessoas e isolam os pares. A paginação evita descarregar toda a conversa. Os planos gratuitos têm quotas: esta alteração não promete utilização ilimitada nem elimina a futura necessidade de rever custos e capacidade.
+
+## Perfil organizado e avisos de atividades
+
+O Perfil passa a apresentar seis categorias: Conta, O nosso espaço, Notificações, Privacidade, Aparência e Cuidados pessoais. Abre-se apenas uma categoria de cada vez; explicações e instalação ficam recolhidas em ajuda expansível. Os controlos anteriores e respetivos dados foram preservados.
+
+Além das mensagens, notas, desenhos e toques, o emissor atualizado suporta check-ins novos ou atualizados, estados e localização pontual, sempre que o autor permite a respetiva partilha. O aviso identifica a categoria sem apresentar conteúdo privado. O mood só avisa quando a pessoa confirma em Partilhar. Não há avisos de rascunhos, histórico ou personalização local. A implementação mantém as limitações de entrega do sistema operativo e do envio iniciado pelo cliente descritas acima.
+
+Validação desta alteração: 26 testes do cliente/lógica e 12 do emissor. Os testes adicionais verificam privacidade, referência ao documento original, revisão confirmada pelo servidor, atualização de mood, deduplicação e silêncio do destinatário. As regras Firestore não foram alargadas nem alteradas nesta revisão. O emissor Cloudflare precisa do bundle atualizado antes de suportar os novos tipos de aviso; `activities:true` na resposta de saúde confirma essa publicação.

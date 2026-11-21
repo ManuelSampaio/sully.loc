@@ -1,9 +1,10 @@
+import { createActivityCursor } from './activity.js';
 import { pairingActions } from './pairing.js';
 import { mergeMessages, MESSAGE_PAGE_SIZE } from './messages.js';
 import { cloudConfig } from './config.js';
 
 // Cada conta tem um perfil. Um convite secreto liga, no máximo, duas contas.
-export async function connectCloud({ onAuth, onData, onPair, onError }) {
+export async function connectCloud({ onAuth, onData, onPair, onError, onActivity=()=>{} }) {
   const version='12.19.0';
   const [appSDK,a,f]=await Promise.all(['app','auth','firestore'].map(name=>import(`https://www.gstatic.com/firebasejs/${version}/firebase-${name}.js`)));
   const app=appSDK.initializeApp(cloudConfig.firebase), auth=a.getAuth(app);
@@ -22,9 +23,11 @@ export async function connectCloud({ onAuth, onData, onPair, onError }) {
     clearMember(p.id);memberUnsubs[p.id]=[];emitPrivate();
     const allow=key=>p.id===user?.uid||p.sharing?.[key]===true;
     const watch=(path,cb)=>memberUnsubs[p.id].push(f.onSnapshot(path,{includeMetadataChanges:true},snap=>{if(token===roomToken())cb(snap);},error=>{if(error.code==='permission-denied'){delete moods[p.id];delete states[p.id];delete locations[p.id];emitPrivate();}else onError(error);}));
-    if(allow('mood'))watch(f.query(f.collection(db,'pairs',room,'moods',p.id,'entries'),f.orderBy('ts','desc'),f.limit(90)),s=>{moods[p.id]=s.docs.map(d=>({...d.data(),id:d.id,pending:d.metadata.hasPendingWrites}));emitPrivate();});
-    if(allow('status'))watch(f.doc(db,'pairs',room,'states',p.id),s=>{if(s.exists())states[p.id]={...s.data(),id:p.id,pending:s.metadata.hasPendingWrites};else delete states[p.id];emitPrivate();});
-    if(allow('location'))watch(f.doc(db,'pairs',room,'locations',p.id),s=>{if(s.exists())locations[p.id]={...s.data(),id:p.id};else delete locations[p.id];emitPrivate();});
+    const activity={mood:createActivityCursor(),status:createActivityCursor(),location:createActivityCursor()};
+    const arrived=(type,rows,snapshot)=>{for(const row of activity[type].consume(rows,{fromCache:snapshot.metadata.fromCache}))if(p.id!==user?.uid)onActivity({type,from:p.id,id:row.id,ts:row.ts});};
+    if(allow('mood'))watch(f.query(f.collection(db,'pairs',room,'moods',p.id,'entries'),f.orderBy('ts','desc'),f.limit(90)),s=>{moods[p.id]=s.docs.map(d=>({...d.data(),id:d.id,pending:d.metadata.hasPendingWrites}));emitPrivate();arrived('mood',moods[p.id],s);});
+    if(allow('status'))watch(f.doc(db,'pairs',room,'states',p.id),s=>{if(s.exists())states[p.id]={...s.data(),id:p.id,pending:s.metadata.hasPendingWrites};else delete states[p.id];emitPrivate();arrived('status',states[p.id]?[states[p.id]]:[],s);});
+    if(allow('location'))watch(f.doc(db,'pairs',room,'locations',p.id),s=>{if(s.exists())locations[p.id]={...s.data(),id:p.id};else delete locations[p.id];emitPrivate();arrived('location',locations[p.id]?[locations[p.id]]:[],s);});
   }
   function startRoom(nextId){
     stopRoom();pairId=nextId;const token=roomToken();

@@ -1,5 +1,5 @@
-const CACHE = 'sully-shell-v3-core-flow';
-const SHELL = ['./', './index.html', './style.css?rev=core-flow', './app.js?rev=core-flow', './core.js?rev=period-moods', './icons.js?rev=period-moods', './sky.js', './theme.js', './alerts.js', './push.js', './messages.js', './pairing.js', './cloud.js?rev=core-flow', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'sully-shell-v3-shared-alerts';
+const SHELL = ['./', './index.html', './style.css?rev=shared-alerts', './app.js?rev=shared-alerts', './core.js?rev=period-moods', './icons.js?rev=period-moods', './sky.js', './theme.js', './alerts.js', './push.js', './activity.js', './messages.js', './pairing.js', './cloud.js?rev=shared-alerts', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('sully-shell-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
@@ -30,7 +30,7 @@ self.addEventListener('push',event=>event.waitUntil((async()=>{
   const latest=await pushSession();if(!latest?.enabled||latest.generation!==session.generation||latest.id!==session.id||latest.quietUntil===-1||latest.quietUntil>Date.now())return;
   // Generic text also protects against a late packet after an account change.
   await self.registration.showNotification('Sully',{
-    body:'Tens uma nova mensagem. Abre a Sully.',
+    body:({message:'Tens uma nova mensagem.',quick:'Recebeste um toque do teu par.',note:'O teu par partilhou uma nota.',drawing:'O teu par enviou um desenho.',mood:'O teu par partilhou ou atualizou um check-in.',status:'O teu par atualizou o estado.',location:'O teu par partilhou a localização.'}[payload.category]||'Tens uma nova mensagem.')+' Abre a Sully.',
     icon:new URL('icons/icon-192.png',self.registration.scope).href,
     badge:new URL('icons/icon-192.png',self.registration.scope).href,
     tag:'sully-'+payload.eventId,

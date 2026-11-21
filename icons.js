@@ -1,6 +1,7 @@
 // Original inline SVG icons: no downloads, fonts or third-party scripts.
 const face = '<circle cx="12" cy="12" r="9"/>';
 const paths = {
+  bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
   radiante: face + '<path d="m7 8 1 1 1-1m6 0 1 1 1-1M7.5 12h9a4.5 4.5 0 0 1-9 0Z"/>',
   bem: face + '<path d="M8 9h.01M16 9h.01M8 13a4 4 0 0 0 8 0"/>',
   tranquilo: face + '<path d="M6.5 9.5q1.5 2 3 0m5 0q1.5 2 3 0M9 15q3 1.5 6 0"/>',

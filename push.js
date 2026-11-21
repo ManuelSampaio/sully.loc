@@ -1,3 +1,4 @@
+import { activityRequest } from './activity.js';
 // Tokens stay in memory; only device identifiers and pending event IDs are stored.
 export const PUSH_ENDPOINT='https://sully-notifications.manuelsampaio1235.workers.dev';
 export const PUSH_CACHE='sully-push-session-v1';
@@ -130,17 +131,17 @@ export function createPushClient({getToken,getRegistration,onChange=()=>{},onWar
    save(key,rows);
    for(const row of rows){
     check(g);
-    try{await api('/v1/send',{eventId:row.id},g);}
-    catch(error){if(!current(g))return;if(!error.status||error.status>=500||error.status===429){retry=true;break;}}
+    try{await api('/v1/send',row.activity?{activity:row.activity}:{eventId:row.id},g);}
+    catch(error){if(!current(g))return;if(row.activity&&error.status===400)onWarning('A alteração ficou guardada. O serviço de avisos precisa de atualização.');if(!error.status||error.status>=500||error.status===429){retry=true;break;}}
     const rest=queue(key).filter(item=>item.id!==row.id);save(key,rest);
    }
   }catch{/* Keep event IDs only; retry on next connection. */}
-  finally{flushing=false;if(retry&&current(g)){cancel(retryTimer);retryTimer=schedule(flush,15000);onWarning('Mensagem sincronizada. O aviso do telemóvel ainda está em espera.');}}
+  finally{flushing=false;if(retry&&current(g)){cancel(retryTimer);retryTimer=schedule(flush,15000);onWarning('Alteração sincronizada. O aviso do telemóvel ainda está em espera.');}}
  }
- function send(eventId,uid){
+ function send(eventId,uid,activity=null){
   if(uid!==context.uid||!context.pairId)return;
   const key=queueKey(uid),rows=queue(key).filter(row=>row&&now()-row.ts<300000);
-  if(!rows.some(row=>row.id===eventId))rows.push({id:eventId,pairId:context.pairId,ts:now()});
+  if(!rows.some(row=>row.id===eventId))rows.push({id:eventId,pairId:context.pairId,ts:now(),...(activity?{activity}:{})});
   try{save(key,rows.slice(-30));flush();}catch{onWarning('Mensagem sincronizada. Não foi possível preparar o aviso do telemóvel.');}
  }
  async function logout(){
@@ -149,5 +150,6 @@ export function createPushClient({getToken,getRegistration,onChange=()=>{},onWar
   if(uid)save(queueKey(uid),null);
   context={uid:null,pairId:'',quietUntil:0};if(env.PushManager)await gate(false);
  }
- return {setSession,enable,disable,logout,send,refresh:reconcile,syncQuiet,state:()=>({...state})};
+ function sendActivity(type,id,revision,uid){const {activity}=activityRequest(type,id,revision);send(`activity:${type}:${id}:${revision}`,uid,activity);}
+ return {setSession,enable,disable,logout,send,sendActivity,refresh:reconcile,syncQuiet,state:()=>({...state})};
 }
