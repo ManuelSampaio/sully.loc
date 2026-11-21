@@ -23,10 +23,12 @@ A opção de dispositivo de confiança guarda a sessão. A cache persistente de 
 
 1. Cada pessoa abre o site no seu telemóvel e escolhe **Criar a minha conta**.
 2. Introduz o seu próprio nome, e-mail e palavra-passe. A palavra-passe é tratada pelo Firebase Authentication, não guardada em documentos Firestore.
-3. Uma das pessoas vai a **Ajustes → O nosso espaço → Criar convite**.
-4. Envia o código de 32 caracteres ao seu par por um canal privado.
-5. O outro cola-o em **Já recebeste um convite? → Aceitar convite**.
+3. Uma das pessoas vai a **Perfil → O nosso espaço → Criar convite**.
+4. Envia o código de 32 caracteres ou o link copiado ao seu par por um canal privado.
+5. O outro cola-o em **Recebeste um convite? → Aceitar convite**.
 6. Cada pessoa vai a **O que quero partilhar** e ativa apenas as opções que pretende.
+
+Se ambos criaram convites, é possível tocar em **Cancelar o meu convite** ou colar o convite recebido e usar **Cancelar o meu convite e aceitar este**. A substituição é atómica: se o código recebido for inválido, o convite anterior é conservado. Um código cancelado deixa de poder ser aceite. Uma ligação já aceite não pode ser desfeita por estes botões.
 
 Cada espaço admite duas contas. Um código aceite deixa de admitir outra pessoa. Não há pesquisa/listagem pública de perfis ou convites. Uma conta não recebe dados de outra só por se registar.
 
@@ -40,7 +42,7 @@ Humor, estado e localização começam com a partilha desligada. Mensagens e not
 - Ao desligar localização, a última posição deixa de ser lida pelo par e desaparece da interface. Informação anteriormente vista, fotografada ou exportada não pode ser retirada do dispositivo do outro.
 - Os dados não têm encriptação ponta a ponta; o proprietário do projeto Firebase tem acesso administrativo.
 - Nesta versão, não existe interface para desfazer uma ligação de casal ou eliminar uma conta. Para reorganizar uma ligação, é necessária intervenção do proprietário na consola; revogar partilha de humor, estado e localização continua disponível no site.
-- O modo online mostra as 150 mensagens e os 90 check-ins mais recentes de cada pessoa. Exportar inclui os dados atualmente carregados e autorizados.
+- A conversa carrega 40 mensagens de cada vez e permite carregar as anteriores. Os check-ins mostram os 90 mais recentes de cada pessoa. Exportar inclui os dados atualmente carregados e autorizados.
 
 ## 5. Teste antes de dados pessoais
 
@@ -63,7 +65,7 @@ Depois testar num projeto real, com contas de teste:
 
 Verificar escrita, teclado, botão Enviar e desenho nos dois aparelhos. Há ícones PNG de 192/512 px e apple-touch-icon de 180 px.
 
-**Avisos com o site fechado ainda não estão implementados.** Os lembretes funcionam enquanto o site permanece aberto e o navegador permite executar temporizadores. Web Push exige um emissor seguro e subscrições dos dispositivos; não colocar credenciais de envio no JavaScript público.
+**Web Push está ligado ao Worker Cloudflare/D1.** Depois de ligarem as contas, cada um abre **Perfil → Notificações do teu par → Ativar neste dispositivo** e autoriza o pedido do sistema. No iPhone, requer iOS 16.4+ e abertura pelo ícone instalado no ecrã principal. O texto das mensagens fica oculto nos avisos. Os lembretes periódicos de água e mood continuam a funcionar apenas com o site aberto. Consultar [notifications/README.md](./notifications/README.md) para limites e teste físico.
 
 A interface local pode abrir offline depois de uma primeira visita. O modo de conta depende também de o SDK Firebase externo ter sido carregado e da escolha de persistência feita no login.
 
