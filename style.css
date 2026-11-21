@@ -185,3 +185,15 @@ body.chat-open .toast{bottom:100px}
 .settings-row>span:last-child{width:auto;font-size:inherit;line-height:inherit;text-align:left}.settings-panel label{display:block;font-size:14px;margin:18px 0 8px}.settings-panel button{margin-top:12px}.settings-panel .check-label{display:flex;font-size:14px}
 .settings-list{gap:0}.settings-list .settings-row{flex-direction:row;flex:0 0 auto;justify-content:flex-start;gap:16px}
 body.settings-open .day-sky,body.settings-open .mode-banner{display:none}
+
+
+.welcome{background:var(--bg);color:var(--ink)}
+.signal-mark{width:min(220px,35vh);margin:0 auto}
+.signal-mark svg{display:block;width:100%;overflow:visible}
+#signal-path{stroke:var(--accent);stroke-width:3;stroke-linecap:round}
+.signal-start,.signal-end{fill:var(--accent)}
+.signal-travel{fill:var(--card);stroke:var(--accent);stroke-width:2;opacity:0;animation:signal-pass 3.6s linear 2}
+.signal-ring{stroke:var(--accent);opacity:0;transform-origin:12px 64px;animation:signal-arrives 3.6s ease-out 2}
+@keyframes signal-pass{0%,10%,82%,100%{opacity:0}16%,74%{opacity:1}}
+@keyframes signal-arrives{0%,72%{opacity:0;transform:scale(.6)}77%{opacity:.65}100%{opacity:0;transform:scale(1.7)}}
+@media(prefers-reduced-motion:reduce){.signal-travel,.signal-ring{display:none;animation:none}}

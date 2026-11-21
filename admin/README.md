@@ -1,0 +1,6 @@
+# Painel privado da Sully
+
+1. Com a conta Google proprietária do Firebase Sully, abre https://script.google.com e cria um projeto. Em Definições do projeto, ativa a apresentação do manifesto e adiciona a propriedade de script OWNER_EMAIL com o teu endereço Google.
+2. Copia Code.gs, Painel.html (ficheiro HTML com o nome Painel) e appsscript.json desta pasta para os ficheiros correspondentes no editor. Guarda.
+3. Em Implementar → Nova implementação → Aplicação Web, escolhe executar como o utilizador que acede e acesso apenas para ti. Autoriza com a conta do projeto e guarda o URL privado. A página verifica também OWNER_EMAIL em todas as consultas. Se a API indicar que está desativada no projeto Apps Script, associa o projeto Google Cloud do Firebase nas definições do script e ativa a API indicada.
+4. Publica firestore.rules do repositório no projeto sully-97787 para habilitar a escrita de presença. Na raiz, com a Firebase CLI autenticada, executa `firebase deploy --only firestore:rules --project sully-97787`. O contador de atividade começa com os clientes atualizados. Para verificar, abre a Sully com uma conta, deixa a página visível e atualiza o painel. Após fechar, a conta expira da contagem em cinco minutos.

@@ -56,8 +56,29 @@ export async function connectCloud({ onAuth, onData, onPair, onError, onActivity
       }
     },onError));
   }
+  // One timestamp per account. A closed or hidden page ages out automatically.
+  let nextPresenceAt = 0;
+  function recordPresence() {
+    if (!user || document.hidden || !navigator.onLine || Date.now() < nextPresenceAt) return;
+    nextPresenceAt = Date.now() + 120000;
+    // REST avoids queuing a stale presence write during an offline session.
+    const active = user;
+    active.getIdToken().then(token => {
+      if (active !== user || document.hidden) return;
+      const root = `projects/${cloudConfig.firebase.projectId}/databases/(default)/documents`;
+      return fetch(`https://firestore.googleapis.com/v1/${root}:commit`, {
+        method: 'POST', headers: {Authorization: `Bearer ${token}`, 'Content-Type':'application/json'},
+        body: JSON.stringify({writes:[{transform:{document: `${root}/presence/${active.uid}`,
+          fieldTransforms:[{fieldPath:'seenAt',setToServerValue:'REQUEST_TIME'}]}}]})
+      });
+    }).catch(() => {});
+  }
+  document.addEventListener('visibilitychange',recordPresence);
+  window.addEventListener('online',recordPresence);
+  setInterval(recordPresence,60000);
   const ready=new Promise(resolve=>a.onAuthStateChanged(auth,next=>{
     generation++;authUnsub?.();stopRoom();user=next;profile=null;profiles={};onPair(null);onAuth(next?.uid||null);emitProfiles();
+    nextPresenceAt=0;recordPresence();
     if(next){const token=generation;authUnsub=f.onSnapshot(f.doc(db,'profiles',next.uid),s=>{
       if(token!==generation)return;
       profile=s.exists()?{...s.data(),id:next.uid}:defaultProfile(next.uid,next.displayName||'Tu');

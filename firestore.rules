@@ -18,6 +18,11 @@ service cloud.firestore {
         && p.sharing.mood is bool && p.sharing.status is bool && p.sharing.location is bool
         && (p.pairId == '' || uid in getAfter(/databases/$(database)/documents/pairs/$(p.pairId)).data.members);
     }
+    match /presence/{uid} {
+      allow create, update: if signed() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['seenAt'])
+        && request.resource.data.seenAt == request.time;
+    }
     match /profiles/{uid} {
       allow get: if signed() && (request.auth.uid == uid || (resource.data.pairId != '' && member(resource.data.pairId)));
       allow create: if signed() && request.auth.uid == uid && profileValid(uid) && request.resource.data.pairId == '';
