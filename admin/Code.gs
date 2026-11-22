@@ -25,21 +25,30 @@ function post_(url, body) {
 function getMetrics() {
   owner_();
   const project = 'sully-97787';
-  let accounts = 0, recent = 0, page = '';
-  const cutoff = Date.now() - 7 * 86400000;
+  let accounts = 0, page = '';
+  const now = Date.now();
+  const days = Array.from({length:7}, (_, index) => ({
+    date:Utilities.formatDate(new Date(now - (6-index)*86400000),'Africa/Luanda','yyyy-MM-dd'), count:0
+  }));
+  const byDate = new Map(days.map(day => [day.date, day]));
   do {
     const url = 'https://identitytoolkit.googleapis.com/v1/projects/' + project +
       '/accounts:batchGet?maxResults=1000&fields=users(createdAt),nextPageToken' +
       (page ? '&nextPageToken=' + encodeURIComponent(page) : '');
     const result = JSON.parse(UrlFetchApp.fetch(url, {
-      headers:{Authorization:'Bearer ' + ScriptApp.getOAuthToken()}
+      headers:{Authorization:'Bearer ' + ScriptApp.getOAuthToken(), 'x-goog-user-project':project}
     }).getContentText());
     const rows = result.users || [];
     accounts += rows.length;
-    recent += rows.filter(row => Number(row.createdAt) >= cutoff).length;
+    for (const row of rows) {
+      const created = Number(row.createdAt);
+      if (!created) continue;
+      const day = byDate.get(Utilities.formatDate(new Date(created),'Africa/Luanda','yyyy-MM-dd'));
+      if (day) day.count++;
+    }
     page = result.nextPageToken;
   } while (page);
-  const now = Date.now();
+  const recent = days.reduce((sum, day) => sum + day.count, 0);
   const presence = post_('https://firestore.googleapis.com/v1/projects/' + project + '/databases/(default)/documents:runAggregationQuery', {
     structuredAggregationQuery:{
       structuredQuery:{from:[{collectionId:'presence'}],where:{fieldFilter:{
@@ -50,5 +59,5 @@ function getMetrics() {
   });
   const aggregate = presence.find(row => row.result);
   if (!aggregate || !aggregate.result.aggregateFields.active) throw new Error('Contagem indisponível.');
-  return {accounts,recent, active:Number(aggregate.result.aggregateFields.active.integerValue), updated:now};
+  return {accounts,recent,days, active:Number(aggregate.result.aggregateFields.active.integerValue), updated:now};
 }
