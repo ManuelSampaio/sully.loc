@@ -202,3 +202,20 @@ body.settings-open .day-sky,body.settings-open .mode-banner{display:none}
 .home-grid details[open] summary{margin-bottom:12px}
 #settings-menu #logout-button{display:block;margin:14px auto 0}
 @media(prefers-reduced-motion:reduce){.sully-loop g{animation:none}.sully-loop path{d:path("M52 17C32 1 8 16 19 31C28 42 53 36 53 52C53 70 28 76 14 62")}}
+
+/* Hoje: novidades e conversa primeiro, ações pessoais a seguir. */
+#day-sky{display:none}
+#page-home .home-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+#page-home .partner-card{grid-column:1/-1;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:4px 12px;text-align:left}
+#page-home .partner-avatar{grid-area:1/1/3/2}
+#page-home #partner-name{grid-area:1/2/2/3;margin:0}
+#page-home #partner-state{grid-area:2/2/3/3;justify-self:start;margin:0}
+#page-home #partner-mood,#page-home #partner-note{grid-column:2/-1;margin:4px 0 0}
+#page-home #partner-note:empty{display:none}
+#page-home #partner-note{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+#page-home #send-heart{grid-area:1/3/3/4}
+#page-home #home-chat,#page-home #home-link{grid-column:2/-1;justify-self:start;margin-top:8px}
+#page-home .quick-card{grid-column:1/-1}
+#page-home #quick-actions,#page-home #more-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+#page-home .more-touches summary{font-weight:500;margin:4px 0;color:var(--accent)}
+@media(max-width:680px){#page-home .partner-card{grid-template-columns:42px minmax(0,1fr) auto}}
