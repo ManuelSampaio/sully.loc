@@ -31,6 +31,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 */
 
+// ../core.js
+var MOODS = [["radiante", "\u{1F970}", "Muito bem"], ["bem", "\u{1F60A}", "Bem"], ["tranquilo", "\u{1F60C}", "Tranquilo/a"], ["cansado", "\u{1F971}", "Cansado/a"], ["triste", "\u{1F614}", "Em baixo"], ["stressado", "\u{1F635}\u200D\u{1F4AB}", "Sob stress"]];
+MOODS.push(["energia", "", "Com energia"], ["sono", "", "Com sono"], ["foco", "", "Com foco"], ["paz", "", "Em paz"], ["grato", "", "Grato/a"], ["exausto", "", "Exausto/a"]);
+var STATUS_LIFETIME = 24 * 60 * 60 * 1e3;
+function statusExpiry(state) {
+  const daily = Number.isFinite(state?.ts) ? state.ts + STATUS_LIFETIME : 0;
+  const explicit = Number(state?.until);
+  if (explicit > 0) return daily ? Math.min(explicit, daily) : explicit;
+  return daily;
+}
+
 // node_modules/uint8array-extras/index.js
 var objectToString = Object.prototype.toString;
 var uint8ArrayStringified = "[object Uint8Array]";
@@ -441,8 +452,8 @@ function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Dat
   async function quietState(user) {
     const state = await getDocument(`pairs/${user.pairId}/states/${encodeURIComponent(user.uid)}`, user.token, true);
     const sleeping = ["dormir", "sesta"].includes(state?.data.status);
-    const until = Number(state?.data.until);
-    return sleeping ? Number.isFinite(until) && until > 0 ? until > now() ? until : 0 : -1 : 0;
+    const until = statusExpiry(state?.data);
+    return sleeping && until > now() ? until : 0;
   }
   async function saveQuiet(db, user) {
     const quiet = await quietState(user);

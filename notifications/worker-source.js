@@ -1,3 +1,4 @@
+import { statusExpiry } from '../core.js';
 import { buildPushPayload } from '@block65/webcrypto-web-push';
 import { activityRequest, noticeText } from '../activity.js';
 
@@ -82,8 +83,8 @@ export function createWorker({fetchImpl = (...args)=>fetch(...args), now = ()=>D
     // Read with the recipient's own token; private statuses stay private.
     const state = await getDocument(`pairs/${user.pairId}/states/${encodeURIComponent(user.uid)}`,user.token,true);
     const sleeping = ['dormir','sesta'].includes(state?.data.status);
-    const until = Number(state?.data.until);
-    return sleeping ? (Number.isFinite(until) && until > 0 ? (until > now() ? until : 0) : -1) : 0;
+    const until = statusExpiry(state?.data);
+    return sleeping && until > now() ? until : 0;
   }
   async function saveQuiet(db,user) {
     const quiet = await quietState(user);

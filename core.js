@@ -21,7 +21,16 @@ export const QUICK = [
 ];
 export function dayKey(date = new Date()) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
 export function period(date = new Date()) { const h=date.getHours();return h>=6&&h<12?'manha':h>=12&&h<18?'tarde':'noite'; }
-export function effectiveStatus(member, now = Date.now()) { return member?.until && member.until <= now ? 'disponivel' : member?.status || 'sem estado'; }
+export const STATUS_LIFETIME = 24 * 60 * 60 * 1000;
+export function statusExpiry(state) {
+  const daily = Number.isFinite(state?.ts) ? state.ts + STATUS_LIFETIME : 0;
+  const explicit = Number(state?.until);
+  if (explicit > 0) return daily ? Math.min(explicit, daily) : explicit;
+  return daily;
+}
+export function effectiveStatus(state, now = Date.now()) {
+  return statusExpiry(state) > now ? state.status : 'sem estado';
+}
 export function waterAdd(water, day = dayKey()) { return { day, count: (water?.day === day ? water.count : 0) + 1 }; }
 export function isDrawing(value) { return typeof value === 'string' && value.length < 180000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value); }
 export function validEvent(e) {

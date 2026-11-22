@@ -110,10 +110,10 @@ test('rejects old events using server createTime, never the sender supplied time
 });
 
 test('sleep and nap suppress pushes; preferences derive from own Firestore state; expired naps resume',async()=>{
-  const f=fixture();f.states.b={status:'dormir',until:0};await f.register();f.event('sleep');
+  const f=fixture();f.states.b={status:'dormir',ts:instant,until:0};await f.register();f.event('sleep');
   assert.equal((await f.request('/v1/send',{data:{eventId:'sleep'}})).data.muted,true);
   // Caller cannot request quietUntil=0 to override the actual state.
-  assert.equal((await f.request('/v1/preferences',{uid:'b',data:{quietUntil:0}})).data.quietUntil,-1);
+  assert.equal((await f.request('/v1/preferences',{uid:'b',data:{quietUntil:0}})).data.quietUntil,instant+86400000);
   f.states.b={status:'sesta',until:instant+60000};await f.request('/v1/preferences',{uid:'b'});f.event('nap');
   assert.equal((await f.request('/v1/send',{data:{eventId:'nap'}})).data.muted,true);
   f.db.sql.prepare('UPDATE push_preferences SET quiet_until=? WHERE uid=?').run(instant-1,'b');f.event('awake');
@@ -164,6 +164,6 @@ test('shared status and location notices omit coordinates and respect the recipi
  f.activities[`pairs/${pair}/locations/a`]={data:{id:'a',from:'a',ts:101,lat:-8.9,lng:13.2},updatedAt:instant};
  assert.equal((await f.request('/v1/send',{data:{activity:{type:'location',id:'a',revision:101}}})).data.sent,1);
  const payload=JSON.parse(ece.decrypt(Buffer.from(f.pushes[1].options.body),{version:'aes128gcm',privateKey:target.dh,authSecret:target.auth}).toString());assert.equal(payload.category,'location');assert(!('lat' in payload));assert(!JSON.stringify(payload).includes('13.2'));
- f.states.b={status:'dormir',until:0};await f.request('/v1/preferences',{uid:'b'});
+ f.states.b={status:'dormir',ts:instant,until:0};await f.request('/v1/preferences',{uid:'b'});
  f.activities[`pairs/${pair}/locations/a`].updatedAt=instant+1;assert.equal((await f.request('/v1/send',{data:{activity:{type:'location',id:'a',revision:101}}})).data.muted,true);
 });

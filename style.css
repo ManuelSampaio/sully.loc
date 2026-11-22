@@ -188,12 +188,17 @@ body.settings-open .day-sky,body.settings-open .mode-banner{display:none}
 
 
 .welcome{background:var(--bg);color:var(--ink)}
-.signal-mark{width:min(220px,35vh);margin:0 auto}
-.signal-mark svg{display:block;width:100%;overflow:visible}
-#signal-path{stroke:var(--accent);stroke-width:3;stroke-linecap:round}
-.signal-start,.signal-end{fill:var(--accent)}
-.signal-travel{fill:var(--card);stroke:var(--accent);stroke-width:2;opacity:0;animation:signal-pass 3.6s linear 2}
-.signal-ring{stroke:var(--accent);opacity:0;transform-origin:12px 64px;animation:signal-arrives 3.6s ease-out 2}
-@keyframes signal-pass{0%,10%,82%,100%{opacity:0}16%,74%{opacity:1}}
-@keyframes signal-arrives{0%,72%{opacity:0;transform:scale(.6)}77%{opacity:.65}100%{opacity:0;transform:scale(1.7)}}
-@media(prefers-reduced-motion:reduce){.signal-travel,.signal-ring{display:none;animation:none}}
+
+.sully-loop{width:100px;height:100px;display:block;margin:0 auto 6px;color:#79594e}
+[data-theme="dark"] .sully-loop{color:#cda692}
+.sully-loop path{fill:none;stroke:currentColor;stroke-linecap:round;stroke-width:3}
+.sully-loop g{transform-origin:34px 40px;animation:loop-turn 4.6s ease-in-out}
+@keyframes loop-turn{0%,100%{transform:rotate(0)}45%,65%{transform:rotate(180deg)}}
+#login-form .sully-loop{width:64px;height:64px}
+.home-grid .partner-card{order:0}.home-grid .quick-card{order:1}.home-grid .mood-card{order:2}.home-grid .status-card{order:3}
+.home-grid details{display:block;align-self:stretch}
+.home-grid summary{cursor:pointer;font-weight:600;padding:4px;min-height:36px;align-content:center}
+.home-grid summary small{font-weight:400;color:var(--muted);margin-left:.5em}
+.home-grid details[open] summary{margin-bottom:12px}
+#settings-menu #logout-button{display:block;margin:14px auto 0}
+@media(prefers-reduced-motion:reduce){.sully-loop g{animation:none}.sully-loop path{d:path("M52 17C32 1 8 16 19 31C28 42 53 36 53 52C53 70 28 76 14 62")}}
