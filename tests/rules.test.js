@@ -133,3 +133,19 @@ test('par revogado perde acesso, mas o próprio pode apagar a posição e a hora
  await assertSucceeds(cleanup.commit());
  assert.equal((await getDoc(ownClock)).exists(),false);
 });
+
+test('datas permitem edição pelos dois e apenas consultas limitadas ao par',async()=>{
+ const {alice,bob}=await couple(),third=await register('third');
+ const path=['pairs',code,'dates','encontro'];
+ const event={tipo:'encontro',titulo:'Reencontro',data:'2027-01-05',anual:false,criadoPor:'alice',atualizadoEm:sdk.serverTimestamp()};
+ await assertSucceeds(setDoc(doc(alice,...path),event));
+ await assertSucceeds(updateDoc(doc(bob,...path),{titulo:'O nosso encontro',atualizadoEm:sdk.serverTimestamp()}));
+ await assertFails(updateDoc(doc(bob,...path),{criadoPor:'bob',atualizadoEm:sdk.serverTimestamp()}));
+ await assertFails(updateDoc(doc(bob,...path),{extra:true,atualizadoEm:sdk.serverTimestamp()}));
+ await assertFails(getDoc(doc(third,...path)));
+ const events=collection(bob,'pairs',code,'dates');
+ await assertFails(getDocs(events));
+ await assertFails(getDocs(sdk.query(events,sdk.limit(101))));
+ await assertSucceeds(getDocs(sdk.query(events,sdk.limit(100))));
+ await assertSucceeds(sdk.deleteDoc(doc(bob,...path)));
+});

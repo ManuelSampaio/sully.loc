@@ -1,3 +1,4 @@
+import { configureDates } from './sx-dates.js';
 import { noticeText } from './activity.js';
 import { mergeMessages, messageState, createDraftStore } from './messages.js';
 import { parseInvite } from './pairing.js';
@@ -321,7 +322,11 @@ window.addEventListener('online',()=>{if(cloudConfig.enabled)push.refresh();reco
 if('serviceWorker' in navigator){swRegistrationPromise=navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(()=>navigator.serviceWorker.ready);swRegistrationPromise.catch(()=>toast('O modo offline e as notificações não ficaram disponíveis neste navegador.'));}
 const todayUI = configureToday({setStatus});
 const locationUI = configureLocation();
-function syncLocationUI(){locationUI.sync(cloud?.live,currentPair,me,page==='home');}
+const datesUI = configureDates();
+function syncLocationUI(){
+ locationUI.sync(cloud?.live,currentPair,me,page==='home');
+ datesUI.sync(cloud?.dates,currentPair,me,page==='home');
+}
 for(const event of ['online','offline']) window.addEventListener(event,syncLocationUI);
 document.addEventListener('visibilitychange',syncLocationUI);
 window.sullyReady=true;$('#boot-loader').hidden=true;updateDate();loadMood();render();
