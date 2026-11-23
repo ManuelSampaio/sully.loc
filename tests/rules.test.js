@@ -89,3 +89,47 @@ test('aceitar um convite inválido conserva o convite pendente anterior',async()
  await assert.rejects(a.joinInvite('invalid'));assert.equal((await getDoc(doc(alice,'profiles','alice'))).data().pairId,code);
  await assert.rejects(a.joinInvite(code),/teu convite/);
 });
+
+const livePosition=(fields={})=>({latE2:-888,lngE2:1324,cidade:'',pais:'',atualizadoEm:sdk.serverTimestamp(),...fields});
+const livePath=(name,uid='alice')=>['pairs',code,name,uid];
+function shareLive(store, value, position=livePosition()) {
+ const batch=writeBatch(store);
+ batch.set(doc(store,...livePath('locationSharing')),{partilha:value});
+ if(value)batch.set(doc(store,...livePath('liveLocations')),position);
+ else batch.delete(doc(store,...livePath('liveLocations')));
+ return batch.commit();
+}
+test('localização ao vivo exige consentimento atómico, campos exatos e coordenadas inteiras',async()=>{
+ const {alice,bob}=await couple();
+ const here=doc(alice,...livePath('liveLocations'));
+ await assertFails(setDoc(here,livePosition()));
+ await assertFails(setDoc(doc(alice,...livePath('locationSharing')),{partilha:true}));
+ await assertFails(getDoc(doc(bob,...livePath('liveLocations'))));
+ for(const fields of [{latE2:1.5},{lngE2:18001},{latE2:-9001},{altitude:12},{atualizadoEm:sdk.Timestamp.fromMillis(0)}]){
+   await assertFails(shareLive(alice,true,livePosition(fields)));
+ }
+ await assertSucceeds(shareLive(alice,true));
+ await assertSucceeds(getDoc(doc(bob,...livePath('liveLocations'))));
+ await assertFails(setDoc(doc(alice,...livePath('locationSharing')),{partilha:false}));
+ await assertFails(setDoc(doc(bob,...livePath('locationSharing')),{partilha:false}));
+ await assertSucceeds(shareLive(alice,false));
+ assert.equal((await getDoc(here)).exists(),false);
+ await assertFails(getDoc(doc(bob,...livePath('liveLocations'))));
+ await assertFails(setDoc(here,livePosition()));
+});
+test('par revogado perde acesso, mas o próprio pode apagar a posição e a hora',async()=>{
+ const {alice,bob}=await couple();
+ await shareLive(alice,true);
+ const ownClock=doc(alice,...livePath('clocks'));
+ await assertSucceeds(setDoc(ownClock,{fuso:'Africa/Luanda'}));
+ await assertSucceeds(getDoc(doc(bob,...livePath('clocks'))));
+ await env.withSecurityRulesDisabled(ctx=>updateDoc(doc(ctx.firestore(),'pairs',code),{revoked:true}));
+ await assertFails(getDoc(doc(bob,...livePath('liveLocations'))));
+ await assertFails(getDoc(doc(bob,...livePath('clocks'))));
+ const cleanup=writeBatch(alice);
+ cleanup.set(doc(alice,...livePath('locationSharing')),{partilha:false});
+ cleanup.delete(doc(alice,...livePath('liveLocations')));
+ cleanup.delete(ownClock);
+ await assertSucceeds(cleanup.commit());
+ assert.equal((await getDoc(ownClock)).exists(),false);
+});

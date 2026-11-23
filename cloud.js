@@ -1,3 +1,4 @@
+import { locationStore } from './sx-location-store.js';
 import { createActivityCursor } from './activity.js';
 import { pairingActions } from './pairing.js';
 import { mergeMessages, MESSAGE_PAGE_SIZE } from './messages.js';
@@ -12,6 +13,7 @@ export async function connectCloud({ onAuth, onData, onPair, onError, onActivity
   const db=f.initializeFirestore(app,{localCache:trusted?f.persistentLocalCache({tabManager:f.persistentMultipleTabManager()}):f.memoryLocalCache()});
   let user=null,profile=null,pairId='',authUnsub=null,roomUnsubs=[],memberUnsubs={},generation=0;
   let profiles={},moods={},states={},locations={},roomEpoch=0,latestEvents=[],olderEvents=[],olderCursor=null,hasMoreEvents=false,loadingOlder=false,historyStarted=false;
+  const live = locationStore({db,f,userId:()=>user?.uid});
   const roomToken=()=>`${generation}:${roomEpoch}`;
   const emitEvents=(metadata={})=>onData('events',mergeMessages(olderEvents,latestEvents),{hasMore:hasMoreEvents,...metadata});
   const defaultProfile=(uid,name='Tu')=>({id:uid,name,pairId:'',sharing:{mood:false,status:false,location:false},ts:Date.now()});
@@ -33,7 +35,11 @@ export async function connectCloud({ onAuth, onData, onPair, onError, onActivity
     stopRoom();pairId=nextId;const token=roomToken();
     if(!nextId){onPair(null);return;}
     roomUnsubs.push(f.onSnapshot(f.doc(db,'pairs',nextId),s=>{
-      if(token!==roomToken()||!s.exists()||s.data().revoked)return;
+      if(token!==roomToken())return;
+      if(!s.exists()||s.data().revoked){
+        if(user && pairId) live.revoke(pairId,{clock:true}).catch(onError);
+        stopRoom();onPair(null);return;
+      }
       const pair=s.data();onPair({id:nextId,...pair});
       for(const uid of pair.members){
         if(profiles[uid]?._watching)continue;
@@ -45,7 +51,12 @@ export async function connectCloud({ onAuth, onData, onPair, onError, onActivity
           emitProfiles();watchPrivate(p,nextId,token);
         },onError));
       }
-    },onError));
+    },error=>{
+      if(token===roomToken()&&error.code==='permission-denied'){
+        if(user&&pairId) live.revoke(pairId,{clock:true}).catch(onError);
+        stopRoom();onPair(null);
+      }else onError(error);
+    }));
     let eventsReady=false;
     roomUnsubs.push(f.onSnapshot(f.query(f.collection(db,'pairs',nextId,'events'),f.orderBy('ts','desc'),f.limit(MESSAGE_PAGE_SIZE)),{includeMetadataChanges:true},s=>{
       if(token===roomToken()){
@@ -83,7 +94,9 @@ export async function connectCloud({ onAuth, onData, onPair, onError, onActivity
       if(token!==generation)return;
       profile=s.exists()?{...s.data(),id:next.uid}:defaultProfile(next.uid,next.displayName||'Tu');
       profiles[next.uid]={...profile,_watching:profiles[next.uid]?._watching||false};emitProfiles();
-      if(profile.pairId!==pairId){profiles={[next.uid]:profile};startRoom(profile.pairId);}
+      if(profile.pairId!==pairId){
+        if(pairId)live.revoke(pairId,{clock:true}).catch(onError);
+        profiles={[next.uid]:profile};startRoom(profile.pairId);}
     },onError);}
     resolve();
   },error=>{onError(error);resolve();}));
@@ -91,6 +104,7 @@ export async function connectCloud({ onAuth, onData, onPair, onError, onActivity
   function needUser(){if(!user)throw new Error('Entra na tua conta primeiro.');}
   async function persistence(trust){localStorage.setItem('sully.trusted',trust?'yes':'no');await a.setPersistence(auth,trust?a.browserLocalPersistence:a.browserSessionPersistence);return true;}
   return {
+    live,
     async getToken(expectedUid){needUser();const active=user;if(active.uid!==expectedUid)throw new Error('A conta mudou.');const token=await active.getIdToken();if(user!==active)throw new Error('A conta mudou.');return token;},
     async login(email,password,trust){if(!await persistence(trust))return{reload:true};await a.signInWithEmailAndPassword(auth,email,password);return{reload:false};},
     async signup(name,email,password,trust){

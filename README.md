@@ -84,3 +84,7 @@ O Perfil passa a apresentar seis categorias: Conta, O nosso espaço, Notificaç�
 Além das mensagens, notas, desenhos e toques, o emissor atualizado suporta check-ins novos ou atualizados, estados e localização pontual, sempre que o autor permite a respetiva partilha. O aviso identifica a categoria sem apresentar conteúdo privado. O mood só avisa quando a pessoa confirma em Partilhar. Não há avisos de rascunhos, histórico ou personalização local. A implementação mantém as limitações de entrega do sistema operativo e do envio iniciado pelo cliente descritas acima.
 
 Validação desta alteração: 26 testes do cliente/lógica e 12 do emissor. Os testes adicionais verificam privacidade, referência ao documento original, revisão confirmada pelo servidor, atualização de mood, deduplicação e silêncio do destinatário. As regras Firestore não foram alargadas nem alteradas nesta revisão. O emissor Cloudflare precisa do bundle atualizado antes de suportar os novos tipos de aviso; `activities:true` na resposta de saúde confirma essa publicação.
+
+### Lista local de cidades
+
+`sx-cities.json` usa [Natural Earth 1:50m Populated Places Simple v5.1.2](https://www.naturalearthdata.com/downloads/50m-cultural-vectors/50m-populated-places/), dados de domínio público. A lista é servida pelo próprio Sully e só é pedida quando alguém ativa a localização. A aproximação procura uma cidade da lista até 300 km. A cidade e o país podem ser corrigidos no Perfil.

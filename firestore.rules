@@ -50,6 +50,50 @@ service cloud.firestore {
         && request.resource.data.createdBy == resource.data.createdBy && request.resource.data.ts == resource.data.ts
         && request.resource.data.revoked == true
         && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId != pair;
+      function linkedPair() {
+        return member(pair)
+          && get(/databases/$(database)/documents/pairs/$(pair)).data.members.size() == 2
+          && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.pairId == pair;
+      }
+      function locationOwner(uid) { return signed() && request.auth.uid == uid; }
+      function sharingPath(uid) {
+        return /databases/$(database)/documents/pairs/$(pair)/locationSharing/$(uid);
+      }
+      function liveLocationPath(uid) {
+        return /databases/$(database)/documents/pairs/$(pair)/liveLocations/$(uid);
+      }
+      match /locationSharing/{uid} {
+        allow get: if locationOwner(uid) || linkedPair();
+        allow create, update: if locationOwner(uid)
+          && request.resource.data.keys().hasOnly(['partilha'])
+          && request.resource.data.partilha is bool
+          && (request.resource.data.partilha
+            ? linkedPair() && existsAfter(liveLocationPath(uid))
+            : !existsAfter(liveLocationPath(uid)));
+      }
+      match /liveLocations/{uid} {
+        allow get: if locationOwner(uid) || (linkedPair()
+          && get(/databases/$(database)/documents/profiles/$(uid)).data.pairId == pair
+          && exists(sharingPath(uid)) && get(sharingPath(uid)).data.partilha == true);
+        allow create, update: if locationOwner(uid) && linkedPair()
+          && getAfter(sharingPath(uid)).data.partilha == true
+          && request.resource.data.keys().hasOnly(['latE2','lngE2','cidade','pais','atualizadoEm'])
+          && request.resource.data.latE2 is int
+          && request.resource.data.latE2 >= -9000 && request.resource.data.latE2 <= 9000
+          && request.resource.data.lngE2 is int
+          && request.resource.data.lngE2 >= -18000 && request.resource.data.lngE2 <= 18000
+          && text(request.resource.data.cidade,80) && text(request.resource.data.pais,56)
+          && request.resource.data.atualizadoEm == request.time;
+        allow delete: if locationOwner(uid);
+      }
+      match /clocks/{uid} {
+        allow get: if locationOwner(uid) || (linkedPair()
+          && get(/databases/$(database)/documents/profiles/$(uid)).data.pairId == pair);
+        allow create, update: if locationOwner(uid) && linkedPair()
+          && request.resource.data.keys().hasOnly(['fuso'])
+          && text(request.resource.data.fuso,80) && request.resource.data.fuso.size() > 0;
+        allow delete: if locationOwner(uid);
+      }
       match /states/{uid} {
         allow read: if member(pair) && shared(uid,'status');
         allow create, update: if member(pair) && request.auth.uid == uid

@@ -88,7 +88,7 @@
   const distance = document.createElement('section');
   distance.className = 'sx-distance';
   distance.setAttribute('aria-label', 'O vosso reencontro');
-  distance.innerHTML = `<svg viewBox="0 0 360 64" aria-hidden="true">
+  distance.innerHTML = `<svg class="sx-distance-curve" viewBox="0 0 360 64" aria-hidden="true">
     <g transform="translate(22 32)">
       <path class="sx-line" d="M0 0C75 -44 241 44 316 0"/>
       <circle cx="0" cy="0" r="5" fill="currentColor"/>
@@ -123,6 +123,7 @@
     reunionLabel.textContent = days === 0 ? 'É hoje que se vão ver.' : days === 1
       ? 'Falta 1 dia para se verem.' : `Faltam ${days} dias para se verem.`;
     dateEdit.textContent = days >= 0 ? 'Alterar data' : 'Define quando se vão ver';
+    if (distance.querySelector('.sx-live-meter')) return;
     const timeZone = readLocal(timeZoneKey);
     partnerClock.hidden = true;
     if (timeZone && !document.hidden && !distance.hidden && !home.hidden && !workspace.hidden) {
