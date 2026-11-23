@@ -1,3 +1,4 @@
+import { dateStore } from './sx-date-store.js';
 import { locationStore } from './sx-location-store.js';
 import { createActivityCursor } from './activity.js';
 import { pairingActions } from './pairing.js';
@@ -109,6 +110,7 @@ export async function connectCloud({ onAuth, onData, onPair, onError, onActivity
   async function persistence(trust){localStorage.setItem('sully.trusted',trust?'yes':'no');await a.setPersistence(auth,trust?a.browserLocalPersistence:a.browserSessionPersistence);return true;}
   return {
     live,
+    dates:dateStore({db,f,userId:()=>user?.uid}),
     async getToken(expectedUid){needUser();const active=user;if(active.uid!==expectedUid)throw new Error('A conta mudou.');const token=await active.getIdToken();if(user!==active)throw new Error('A conta mudou.');return token;},
     async login(email,password,trust){if(!await persistence(trust))return{reload:true};await a.signInWithEmailAndPassword(auth,email,password);return{reload:false};},
     async signup(name,email,password,trust){

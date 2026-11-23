@@ -119,10 +119,12 @@
     const todayNumber = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
     const saved = readLocal(reunionKey);
     const days = /^\d{4}-\d{2}-\d{2}$/.test(saved) ? (Date.parse(saved) - todayNumber) / 86400000 : NaN;
-    reunionLabel.hidden = !(days >= 0);
-    reunionLabel.textContent = days === 0 ? 'É hoje que se vão ver.' : days === 1
+    if (!distance.classList.contains('sx-shared-reunion')) {
+      reunionLabel.hidden = !(days >= 0);
+      reunionLabel.textContent = days === 0 ? 'É hoje que se vão ver.' : days === 1
       ? 'Falta 1 dia para se verem.' : `Faltam ${days} dias para se verem.`;
-    dateEdit.textContent = days >= 0 ? 'Alterar data' : 'Define quando se vão ver';
+      dateEdit.textContent = days >= 0 ? 'Alterar data' : 'Define quando se vão ver';
+    }
     if (distance.querySelector('.sx-live-meter')) return;
     const timeZone = readLocal(timeZoneKey);
     partnerClock.hidden = true;

@@ -29,3 +29,11 @@ test('estado explícito volta a Disponível por 24 h sem escrever', () => {
   assert.equal(effectiveStatus(available,86400999),'disponivel');
   assert.equal(effectiveStatus(available,86401000),'sem estado');
 });
+
+test('datas partilhadas contam dias de calendário e aniversários anuais',async()=>{
+  const {occurrence}=await import('../sx-dates.js');
+  assert.deepEqual(occurrence({data:'2026-03-30',anual:false},'2026-03-28'),{date:'2026-03-30',days:2});
+  assert.deepEqual(occurrence({data:'2020-02-29',anual:true},'2026-02-27'),{date:'2026-02-28',days:1});
+  assert.deepEqual(occurrence({data:'2020-01-01',anual:true},'2026-12-31'),{date:'2027-01-01',days:1});
+  assert.equal(occurrence({data:'2026-02-30',anual:true},'2026-02-27'),null);
+});

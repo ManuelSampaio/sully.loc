@@ -94,6 +94,23 @@ service cloud.firestore {
           && text(request.resource.data.fuso,80) && request.resource.data.fuso.size() > 0;
         allow delete: if locationOwner(uid);
       }
+      match /dates/{eventId} {
+        function validDate() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['tipo','titulo','data','anual','criadoPor','atualizadoEm'])
+            && d.tipo in ['encontro','aniversario','aniversarioNamoro','outra']
+            && text(d.titulo,80) && d.titulo.size() > 0
+            && d.data is string
+            && d.data.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+            && d.anual is bool && d.atualizadoEm == request.time;
+        }
+        allow get, delete: if linkedPair();
+        allow list: if linkedPair() && request.query.limit <= 100;
+        allow create: if linkedPair() && validDate()
+          && request.resource.data.criadoPor == request.auth.uid;
+        allow update: if linkedPair() && validDate()
+          && request.resource.data.criadoPor == resource.data.criadoPor;
+      }
       match /states/{uid} {
         allow read: if member(pair) && shared(uid,'status');
         allow create, update: if member(pair) && request.auth.uid == uid
