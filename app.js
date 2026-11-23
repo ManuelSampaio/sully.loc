@@ -326,7 +326,11 @@ window.addEventListener('pageshow',updateDate);
 window.addEventListener('online',()=>{if(cloudConfig.enabled)push.refresh();reconnecting=true;setConnection(networkLabel());setTimeout(()=>{reconnecting=false;setConnection(networkLabel());},4000);});window.addEventListener('offline',()=>{reconnecting=false;setConnection(networkLabel());if(activeTasks.size)$('#loader-label').textContent='À espera de rede…';});window.addEventListener('storage',e=>{if(e.key==='sully.push.device.v1'&&cloudConfig.enabled)push.refresh();if(me&&e.key===localStateKey()){personal=read(localStateKey(),{});render();}if(!cloudConfig.enabled && e.key===KEY){const fresh=read(KEY,null);if(fresh?.members?.a&&fresh?.members?.b&&Array.isArray(fresh.events)&&Array.isArray(fresh.moods)){const previous=new Set(data.events.map(x=>x.id));data=fresh;for(const item of data.events)if(!previous.has(item.id)&&item.from!==me){receivePartnerEvent(item);}render();}}});
 if('serviceWorker' in navigator){swRegistrationPromise=navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(()=>navigator.serviceWorker.ready);swRegistrationPromise.catch(()=>toast('O modo offline e as notificações não ficaram disponíveis neste navegador.'));}
 const todayUI = configureToday({setStatus});
-const locationUI = configureLocation();
+const locationUI = configureLocation(() => {
+ showPage('settings');
+ openSettings('privacy');
+ $('#sx-location-enable').focus();
+});
 const datesUI = configureDates();
 function syncLocationUI(){
  locationUI.sync(cloud?.live,currentPair,me,page==='home');

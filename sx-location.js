@@ -29,7 +29,7 @@ function currentPosition() {
     : reject(new Error('Este dispositivo não disponibiliza a localização.')));
 }
 
-export function configureLocation() {
+export function configureLocation(openLocationSettings) {
   const q = value => document.querySelector(value);
   const consent = q('#sx-location-consent');
   const enable = q('#sx-location-enable');
@@ -42,9 +42,18 @@ export function configureLocation() {
   const saveCity = q('#sx-save-city');
   const meter = document.createElement('div');
   meter.className = 'sx-live-meter';
-  meter.innerHTML = '<div class="sx-live-line" aria-hidden="true"><span></span><span></span></div><p class="sx-live-distance"></p><p class="sx-live-age"></p>';
+  meter.innerHTML = `
+    <p class="sx-live-label">Distância entre nós</p>
+    <p class="sx-live-distance" role="status"></p>
+    <p class="sx-live-route" hidden></p>
+    <div class="sx-live-line" aria-hidden="true"><span></span><span></span></div>
+    <p class="sx-live-age" hidden></p>
+    <button class="text-button sx-live-enable" type="button" hidden>Ativar localização</button>`;
   q('#page-home .sx-distance').prepend(meter);
-  const line = meter.firstElementChild;
+  const line = meter.querySelector('.sx-live-line');
+  const routeText = meter.querySelector('.sx-live-route');
+  const enableFromHome = meter.querySelector('.sx-live-enable');
+  enableFromHome.addEventListener('click',openLocationSettings);
   const distanceText = meter.querySelector('.sx-live-distance');
   const ageText = meter.querySelector('.sx-live-age');
   let live, room, uid, partner;
@@ -75,11 +84,20 @@ export function configureLocation() {
     line.querySelectorAll('span').forEach((el,i) => { el.textContent = [...initials[i].trim()][0]?.toUpperCase() || '·'; });
     const place = position => [position?.cidade,position?.pais].filter(Boolean).join(', ');
     const route = [place(own),place(other)].filter(Boolean).join(' → ');
-    distanceText.textContent = km !== undefined
-      ? (km < 1 ? 'Estão no mesmo sítio' : displayKm.format(km > 100 ? Math.round(km/10)*10 : Math.round(km)) + ' km') + (route ? ' · ' + route : '')
-      : !ownSharing ? 'Ativa a localização no Perfil para ver a distância.'
+    const distanceLabel = km !== undefined
+      ? (km < 1 ? 'Estão perto um do outro' : '≈ ' + displayKm.format(km > 100 ? Math.round(km/10)*10 : Math.round(km)) + ' km')
+      : !room ? 'Liga o teu par para veres a distância.'
+      : !navigator.onLine ? 'Liga-te à Internet para atualizar a distância.'
+      : ownSharing === undefined ? 'A verificar a partilha de localização…'
+      : !ownSharing ? 'Ativa a localização para veres a distância.'
       : !partnerSharing ? 'O teu par ainda não partilha a localização.'
-      : 'Distância atual indisponível.';
+      : 'À espera de localizações recentes.';
+    if (distanceText.textContent !== distanceLabel) distanceText.textContent = distanceLabel;
+    meter.classList.toggle('sx-live-has-distance',km !== undefined);
+    line.hidden = km === undefined;
+    routeText.hidden = km === undefined || !route;
+    routeText.textContent = routeText.hidden ? '' : route;
+    enableFromHome.hidden = !room || ownSharing !== false || !navigator.onLine;
     const age = ms => ms >= day ? `${Math.floor(ms/day)} d` : ms >= 3600000
       ? `${Math.floor(ms/3600000)} h` : `${Math.max(1,Math.floor(ms/60000))} min`;
     ageText.textContent = partnerSharing && other
