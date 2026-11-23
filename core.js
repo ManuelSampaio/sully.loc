@@ -29,7 +29,10 @@ export function statusExpiry(state) {
   return daily;
 }
 export function effectiveStatus(state, now = Date.now()) {
-  return statusExpiry(state) > now ? state.status : 'sem estado';
+  const expiry = statusExpiry(state);
+  if (expiry > now) return state.status;
+  if (Number(state?.until) > 0 && now < expiry + STATUS_LIFETIME) return 'disponivel';
+  return 'sem estado';
 }
 export function waterAdd(water, day = dayKey()) { return { day, count: (water?.day === day ? water.count : 0) + 1 }; }
 export function isDrawing(value) { return typeof value === 'string' && value.length < 180000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value); }

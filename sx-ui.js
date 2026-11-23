@@ -76,7 +76,7 @@
 
   const statusColors = new Map([
     ['Disponível', 'var(--green)'], ['A trabalhar', 'var(--accent)'],
-    ['A estudar', 'var(--accent)'], ['Ocupado/a', 'var(--accent)'],
+    ['A estudar', 'var(--muted)'], ['Ocupado/a', 'var(--muted)'], ['A treinar', 'var(--green)'],
     ['Em deslocação', 'var(--accent)'], ['A dormir', 'var(--sx-par)'], ['A descansar', 'var(--sx-par)']
   ]);
   const ownStatus = home.querySelector('#current-status');
@@ -103,7 +103,7 @@
       <button type="button" class="text-button sx-date-cancel">Cancelar</button>
     </form>
     <p class="sx-partner-clock" hidden></p>`;
-  partner.after(distance);
+  partner.insertBefore(distance, sendHeart);
   const reunionKey = 'sully.ui.reencontro';
   const timeZoneKey = 'sully.ui.fusoPar';
   function readLocal(key) {
@@ -178,6 +178,7 @@
   function updatePartner() {
     const connected = link.hidden;
     const noCheckIn = connected && mood.textContent === 'Ainda sem check-in.';
+    partner.classList.toggle('sx-unpaired', !connected);
     empty.hidden = connected && !noCheckIn;
     empty.textContent = connected
       ? 'Ainda não partilhou o dia. Envia um coração para o teu par ver quando abrir a Sully.'

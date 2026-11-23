@@ -19,7 +19,7 @@ after(async()=>{await env?.cleanup();});
 test('novos estados respeitam autoria, partilha e revogação',async()=>{
   const {alice,bob}=await couple();
   const path=['pairs',code,'states','alice'];
-  for(const status of ['trabalhar','estudar','deslocacao']){
+  for(const status of ['trabalhar','estudar','deslocacao','treinar']){
     await assertSucceeds(setDoc(doc(alice,...path),{id:'alice',name:'Alice',status,until:0,ts:1}));
     await assertFails(getDoc(doc(bob,...path)));
   }

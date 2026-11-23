@@ -55,7 +55,7 @@ service cloud.firestore {
         allow create, update: if member(pair) && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['id','name','status','until','ts'])
           && request.resource.data.id == uid && text(request.resource.data.name,40)
-          && request.resource.data.status in ['disponivel','trabalhar','estudar','ocupado','deslocacao','dormir','sesta']
+          && request.resource.data.status in ['disponivel','trabalhar','estudar','ocupado','deslocacao','dormir','sesta','treinar']
           && request.resource.data.until is number && request.resource.data.until >= 0 && request.resource.data.ts is number;
       }
       match /moods/{uid}/entries/{id} {

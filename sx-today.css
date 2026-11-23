@@ -1,0 +1,53 @@
+#page-home .page-heading { flex-wrap: wrap; gap: 4px 8px; }
+#page-home .sx-state-trigger { margin-inline-start: auto; padding-inline: 6px; font-size: 14px; }
+#page-home .page-heading [data-page="history"] { width: 44px; padding: 0; }
+body:has(#page-home:not([hidden])) .mode-banner.sx-network-ok { display: none; }
+.sx-profile-connection { color: var(--muted); text-align: center; font-size: 14px; }
+:root[data-theme] #page-home .partner-card {
+  gap: 4px 12px; grid-template-columns: 58px minmax(0,1fr);
+}
+#page-home .partner-avatar { width: 58px; height: 58px; }
+#page-home .sx-state-detail { grid-column: 2; font-size: 14px; color: var(--ink); display: flex; align-items: center; gap: 5px; }
+#page-home .sx-state-detail .s-icon { width: 16px; height: 16px; }
+#page-home .sx-distance { grid-column: 1/-1; margin-block: 0 4px; order: 0; }
+#page-home .sx-distance svg { height: 30px; }
+#page-home .sx-shared-at { margin-block: 0; }
+#page-home #send-heart {
+  width: 100%; justify-self: stretch; justify-content: center; white-space: nowrap;
+  color: var(--on-accent,white); background: var(--accent); border-radius: var(--sx-r-pill);
+}
+#page-home .sx-status-context { grid-column: 1/-1; margin: 2px 0; font-size: 14px; }
+#page-home .quick-card { grid-column: 1/-1; order: 0; border: 0; padding: 0; box-shadow: none; background: transparent; }
+#page-home .quick-card .sx-more { display: block; margin: 0 auto; min-height: 44px; }
+#page-home #home-chat { color: var(--accent); background: var(--card); border: 1px solid var(--line); }
+#page-home #home-chat.sx-chat-highlight { border-color: var(--accent); }
+#page-home #home-chat, #page-home #home-link { order: 0; }
+#page-home .sx-unpaired #partner-state, #page-home .sx-unpaired .partner-avatar { display: none; }
+#page-home .sx-unpaired #partner-name { grid-area: 1/1/2/-1; }
+#page-home .sx-unpaired #partner-name { font-size: 0; }
+#page-home .sx-unpaired #partner-name::before { content: 'Convida a tua pessoa'; font-size: 24px; }
+#page-home .sx-checkin { min-height: 44px; font-size: 14px; }
+#page-home .mood-card { padding: 12px; }
+#page-home :is(.mood-card,.quick-card) summary { min-height: 44px; }
+.sx-sheet {
+  position: fixed; inset: auto 0 0; margin: 0 auto; width: min(100%,560px); max-width: 100%;
+  max-height: 90dvh; overflow: auto; border-radius: 22px 22px 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); color: var(--ink);
+}
+.sx-sheet [hidden] { display: none !important; }
+.sx-sheet-heading { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sx-sheet-heading h2 { margin: 0; font-size: 21px; }
+.sx-sheet button, .sx-sheet input[type="time"] { min-height: 44px; font-size: 14px; }
+.sx-sheet button:focus-visible, .sx-sheet input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sx-sheet .status-card, .sx-sheet .mood-card { border: 0; box-shadow: none; padding: 0; }
+.sx-sheet .more-touches { margin: 0; }
+.sx-duration fieldset { margin: 8px 0; padding: 8px; border: 1px solid var(--line); border-radius: 10px; }
+.sx-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.sx-options label { display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 6px; }
+.sx-options input { width: auto; }
+.sx-duration .sx-until { display: block; }
+@media(max-width:767px) {
+  #workspace:has(#page-home:not([hidden])) main { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  #page-home .page-heading { margin-bottom: 8px; }
+  #page-home #greeting { font-size: clamp(1.7rem, 7vw, 2.4rem); }
+}
