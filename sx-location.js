@@ -119,8 +119,9 @@ export function configureLocation() {
       3:'A localização demorou demasiado. Podes tentar noutra altura.'};
     feedback.textContent = messages[error.code] || 'Não foi possível atualizar a partilha. Verifica a ligação e tenta de novo.';
   }
-  async function coordinate(coords, dataset) {
-    const position = {latE2:Math.round(coords.latitude*100),lngE2:Math.round(coords.longitude*100)};
+  function coordinate(coords, dataset) {
+    // Normalize negative zero, which Firestore would store as a double.
+    const position = {latE2:Math.round(coords.latitude*100) + 0,lngE2:Math.round(coords.longitude*100) + 0};
     if (!cityCache || distanceKm(cityCache.position,position) >= 5) {
       cityCache = {position,...cityNear(dataset,position)};
     }
@@ -141,7 +142,7 @@ export function configureLocation() {
       if (revision !== epoch || watchCycle !== cycle || !active || document.hidden || sending) return;
       sending = true;
       try {
-        const value = await coordinate(sample.coords,await loadCities());
+        const value = coordinate(sample.coords,await loadCities());
         if (revision !== epoch || watchCycle !== cycle || !active || document.hidden || !navigator.onLine) return;
         const now = Date.now();
         if (lastPublished && distanceKm(lastPublished,value) <= .5 && now - lastTime < 300000 &&
@@ -252,7 +253,7 @@ export function configureLocation() {
     show();
     try {
       const [sample,dataset] = await Promise.all([currentPosition(),loadCities()]);
-      const value = await coordinate(sample.coords,dataset);
+      const value = coordinate(sample.coords,dataset);
       if (revision !== epoch || document.hidden || !navigator.onLine) return;
       active = true;
       await api.enable(sharingRoom,value);
