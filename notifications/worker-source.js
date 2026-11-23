@@ -70,7 +70,8 @@ export function createWorker({fetchImpl = (...args)=>globalThis.fetch(...args), 
       try {
         response = await fetchImpl(DOCUMENTS + path, {
           headers: { Authorization: `Bearer ${token}` },
-          redirect: 'error',
+          // Workers rejects redirect:error. A manual redirect is handled as a non-OK response.
+          redirect: 'manual',
           signal: controller.signal,
         });
       } catch {
@@ -163,7 +164,7 @@ export function createWorker({fetchImpl = (...args)=>globalThis.fetch(...args), 
         if(path==='/' && request.method==='GET') {
           requireThat(env.DB,503,'Database binding DB is missing');
           await env.DB.prepare('SELECT 1 AS ready').first();
-          return response({service:'Sully notifications',database:'connected',configured:true,activities:true,firebaseDiagnostics:true});
+          return response({service:'Sully notifications',database:'connected',configured:true,activities:true,firebaseDiagnostics:true,redirectFix:true});
         }
         requireThat(['/v1/key','/v1/subscriptions','/v1/preferences','/v1/send'].includes(path),404,'Not found');
         requireThat((path==='/v1/key' && request.method==='GET') || (path==='/v1/subscriptions' && ['POST','DELETE'].includes(request.method)) || (['/v1/preferences','/v1/send'].includes(path) && request.method==='POST'),405,'Method not allowed');
@@ -243,7 +244,7 @@ export function createWorker({fetchImpl = (...args)=>globalThis.fetch(...args), 
             const text=event?.data.kind==='drawing'?'Partilhou um desenho contigo.':String(event?.data.text||'Enviou-te uma mensagem.').slice(0,500);
             const payload={title:'Sully',body:event&&device.preview?`${String(user.profile.name).slice(0,40)}: ${text}`:noticeText[category]+' Abre a Sully.',category,eventId:deliveryId,ts:now()};
             const message=await buildPushPayload({data:JSON.stringify(payload),options:{ttl:300,urgency:'normal',topic:deliveryId.replaceAll('-','').slice(0,32)}},subscription,vapid);
-            const result=await fetchImpl(subscription.endpoint,{...message,redirect:'error',signal:AbortSignal.timeout(8000)});
+            const result=await fetchImpl(subscription.endpoint,{...message,redirect:'manual',signal:AbortSignal.timeout(8000)});
             if(result.ok){sent++;continue;}
             permanent=[404,410].includes(result.status);
             if(permanent)await db.prepare('DELETE FROM push_devices WHERE id=?').bind(device.id).run();

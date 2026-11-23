@@ -28,6 +28,7 @@ function fixture() {
   const db=new D1(), pushes=[], states={}, events={}, activities={}, profiles={a:{mood:true,status:true,location:true},b:{mood:true,status:true,location:true}}, subscriptions=[];
   let pushStatus=201;
   const worker=createWorker({now:()=>instant,fetchImpl:async(url,options)=>{
+    assert.equal(options.redirect,'manual');
     if(!url.startsWith('https://firestore.googleapis.com/')){pushes.push({url,options});return new Response('',{status:pushStatus});}
     const token=options.headers.Authorization.slice(7);
     // Stand-in for Google's actual signature verification; unknown/changed tokens are rejected.
@@ -84,7 +85,7 @@ test('keeps VAPID key stable; returns only public key and cannot overwrite anoth
 test('encrypts generic notification by default; valid VAPID JWT; deduplicates delivery',async()=>{
   const f=fixture(), target=await f.register('b');f.event();
   const result=await f.request('/v1/send',{data:{eventId:'e1'}});assert.equal(result.status,200);assert.equal(result.data.sent,1);
-  const sent=f.pushes[0];assert.equal(sent.options.headers['content-encoding'],'aes128gcm');assert.equal(sent.options.redirect,'error');
+  const sent=f.pushes[0];assert.equal(sent.options.headers['content-encoding'],'aes128gcm');assert.equal(sent.options.redirect,'manual');
   const plaintext=ece.decrypt(Buffer.from(sent.options.body),{version:'aes128gcm',privateKey:target.dh,authSecret:target.auth});
   const payload=JSON.parse(plaintext.toString());assert.equal(payload.title,'Sully');assert.equal(payload.body,'Recebeste um toque do teu par. Abre a Sully.');assert(!plaintext.includes('saudades'));assert(!('url' in payload));
   const auth=sent.options.headers.authorization.match(/^vapid t=(.*), k=(.*)$/);assert(auth);
