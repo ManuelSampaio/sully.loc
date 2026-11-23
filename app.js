@@ -1,7 +1,7 @@
 import { noticeText } from './activity.js';
 import { mergeMessages, messageState, createDraftStore } from './messages.js';
 import { parseInvite } from './pairing.js';
-import { createPushClient } from './push.js?rev=push-feedback';
+import { createPushClient } from './push.js?rev=push-diagnostics';
 import { createTouchInbox, createEventCursor } from './alerts.js';
 import { applyTheme } from './theme.js';
 import { renderSky, skyState } from './sky.js';

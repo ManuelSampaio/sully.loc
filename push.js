@@ -52,7 +52,9 @@ export function createPushClient({getToken,getRegistration,onChange=()=>{},onWar
    };
    const fallback=response.status===401?'A sessão precisa de ser renovada. Entra novamente.':response.status===409?'Liga as duas contas e tenta novamente.':response.status===429?'Demasiados pedidos. Aguarda um minuto e tenta novamente.':`Não foi possível ${stage}.`;
    const detail=Object.hasOwn(messages,value?.error)?messages[value.error]:fallback;
-   const error=new Error(`${detail} (HTTP ${response.status})`);
+   const stages={'firebase':'Firebase','d1-schema':'D1: tabelas','d1-limits':'D1: limite de pedidos','vapid-key':'chave VAPID'};
+   const source=Object.hasOwn(stages,value?.stage)?` · ${stages[value.stage]}`:'';
+   const error=new Error(`${detail} (HTTP ${response.status}${source})`);
    error.status=response.status;
    throw error;
   }

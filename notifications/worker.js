@@ -422,13 +422,11 @@ async function validateSubscription(input) {
   return { endpoint: url.href, expirationTime: null, keys: { p256dh: b64url(publicKey), auth: b64url(auth) } };
 }
 function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Date.now() } = {}) {
-  const databases = /* @__PURE__ */ new WeakMap();
+  const initialized = /* @__PURE__ */ new WeakSet();
   async function initialize(db) {
-    if (!databases.has(db)) databases.set(db, db.batch(SCHEMA.map((sql) => db.prepare(sql))).catch((error) => {
-      databases.delete(db);
-      throw error;
-    }));
-    await databases.get(db);
+    if (initialized.has(db)) return;
+    await db.batch(SCHEMA.map((sql) => db.prepare(sql)));
+    initialized.add(db);
   }
   async function getDocument(path, token, optional = false) {
     const response = await fetchImpl(DOCUMENTS + path, { headers: { Authorization: `Bearer ${token}` }, redirect: "error", signal: AbortSignal.timeout(8e3) });
@@ -518,6 +516,7 @@ function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Dat
       const headers = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Vary": "Origin" };
       if (origin === ORIGIN) Object.assign(headers, { "Access-Control-Allow-Origin": ORIGIN, "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Max-Age": "600" });
       const response = (data, status = 200) => new Response(JSON.stringify(data), { status, headers });
+      let stage;
       try {
         requireThat(!origin || origin === ORIGIN, 403, "Origin not allowed");
         if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
@@ -530,12 +529,17 @@ function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Dat
         requireThat(["/v1/key", "/v1/subscriptions", "/v1/preferences", "/v1/send"].includes(path), 404, "Not found");
         requireThat(path === "/v1/key" && request.method === "GET" || path === "/v1/subscriptions" && ["POST", "DELETE"].includes(request.method) || ["/v1/preferences", "/v1/send"].includes(path) && request.method === "POST", 405, "Method not allowed");
         if (request.method !== "GET") requireThat(origin === ORIGIN, 403, "Origin required");
+        stage = "firebase";
         const user = await account(request);
         requireThat(env.DB, 503, "Database unavailable");
         const db = env.DB;
+        stage = "d1-schema";
         await initialize(db);
+        stage = "d1-limits";
         await limit(db, user.uid);
+        stage = "vapid-key";
         if (path === "/v1/key") return response({ publicKey: (await keyPair(db)).publicKey });
+        stage = void 0;
         const input = await body(request);
         if (path === "/v1/subscriptions" && request.method === "POST") {
           requireThat(typeof input.preview === "boolean", 400, "Choose preview preference");
@@ -622,7 +626,9 @@ function createWorker({ fetchImpl = (...args) => fetch(...args), now = () => Dat
         }
         return response({ sent, retry }, retry ? 503 : 200);
       } catch (error) {
-        return response({ error: error instanceof HttpError ? error.message : "Notification service unavailable" }, error instanceof HttpError ? error.status : 503);
+        const status = error instanceof HttpError ? error.status : 503;
+        const message = error instanceof HttpError ? error.message : "Notification service unavailable";
+        return response({ error: message, ...status === 503 && stage ? { stage } : {} }, status);
       }
     }
   };
