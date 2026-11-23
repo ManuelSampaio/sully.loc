@@ -93,10 +93,16 @@ export function configureDates() {
     const migration = localReunion();
     button.hidden = !room;
     button.textContent = next ? `${next.titulo} · ${next.next.days === 0 ? 'hoje' : `${next.next.days} d`}` : 'Datas';
+    const hadReunion = distance.classList.contains('sx-shared-reunion');
     distance.classList.toggle('sx-shared-reunion',Boolean(reunion));
     if (reunion) {
       reunionLabel.hidden = false;
       reunionLabel.textContent = reunion.next.days === 0 ? 'O próximo encontro é hoje.' : `Próximo encontro em ${reunion.next.days} ${reunion.next.days === 1 ? 'dia' : 'dias'}.`;
+    }
+    if (!reunion && hadReunion) {
+      const remaining = (calendarDay(migration) - calendarDay(today));
+      reunionLabel.hidden = !(remaining >= 0);
+      reunionLabel.textContent = remaining === 0 ? 'É hoje que se vão ver.' : countdown(remaining) + ' para se verem.';
     }
     editLocal.hidden = Boolean(reunion) || !distance.querySelector('form').hidden;
     migrate.hidden = !Number.isFinite(calendarDay(migration)) || rows.some(row => row.tipo === 'encontro' && row.data === migration);

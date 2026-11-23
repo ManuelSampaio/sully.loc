@@ -35,13 +35,17 @@ export async function connectCloud({ onAuth, onData, onPair, onError, onActivity
   function startRoom(nextId){
     stopRoom();pairId=nextId;const token=roomToken();
     if(!nextId){onPair(null);return;}
+    let wasLinked = false;
     roomUnsubs.push(f.onSnapshot(f.doc(db,'pairs',nextId),s=>{
       if(token!==roomToken())return;
-      if(!s.exists()||s.data().revoked){
+      if(!s.exists()&&s.metadata.fromCache)return;
+      if(!s.exists()||s.data().revoked||(wasLinked&&s.data().members.length!==2)){
         if(user && pairId) live.revoke(pairId,{clock:true}).catch(onError);
         stopRoom();onPair(null);return;
       }
-      const pair=s.data();onPair({id:nextId,...pair});
+      const pair=s.data();
+      wasLinked ||= pair.members.length===2;
+      onPair({id:nextId,...pair});
       for(const uid of pair.members){
         if(profiles[uid]?._watching)continue;
         profiles[uid]={...profiles[uid],id:uid,_watching:true};

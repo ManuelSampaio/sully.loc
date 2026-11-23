@@ -39,6 +39,7 @@ export function configureLocation() {
   const customCity = q('#sx-city');
   const customCountry = q('#sx-country');
   const indicator = q('#sx-sharing-indicator');
+  const saveCity = q('#sx-save-city');
   const meter = document.createElement('div');
   meter.className = 'sx-live-meter';
   meter.innerHTML = '<div class="sx-live-line" aria-hidden="true"><span></span><span></span></div><p class="sx-live-distance"></p><p class="sx-live-age"></p>';
@@ -49,7 +50,7 @@ export function configureLocation() {
   let live, room, uid, partner;
   let ownSharing, partnerSharing, own, other, otherClock, clockOn;
   let lastPublished, lastTime = 0, suspending = false;
-  let revision = 0, active = false, busy = false, watchId, sending = false;
+  let revision = 0, active = false, busy = false, watchId, refreshId, sending = false;
   let profileStops = [], todayStops = [], stopPartner, lastToday, cities, cityCache;
   const displayKm = new Intl.NumberFormat('pt-PT');
   function show() {
@@ -57,7 +58,7 @@ export function configureLocation() {
     enable.hidden = ownSharing === true;
     disable.hidden = ownSharing !== true;
     disable.disabled = busy;
-    customCity.disabled = customCountry.disabled = !room;
+    customCity.disabled = customCountry.disabled = saveCity.disabled = !room;
     clock.disabled = !room || clockOn === undefined;
     clock.checked = clockOn === true;
     indicator.hidden = !active || document.hidden || !room;
@@ -83,7 +84,7 @@ export function configureLocation() {
     ageText.textContent = partnerSharing && other
       ? (otherAge >= day ? 'Última localização há ' + age(otherAge)
         : otherAge >= 600000 ? 'Localização atualizada há ' + age(otherAge) : 'O teu par partilha a localização')
-        + (!current && place(other) ? ' · perto de ' + place(other) : '')
+        + (place(other) && !current ? ' · perto de ' + place(other) : '')
         + (ownSharing && ownAge >= 600000 ? ' · a tua: ' + (ownAge >= day ? 'última localização há ' : 'atualizada há ') + age(ownAge) : '')
       : '';
     ageText.hidden = !ageText.textContent;
@@ -102,6 +103,7 @@ export function configureLocation() {
   function stopWatch() {
     if (watchId !== undefined) navigator.geolocation?.clearWatch(watchId);
     watchId = undefined;
+    clearInterval(refreshId);
   }
   function stopToday() {
     todayStops.forEach(stop => stop());
@@ -133,7 +135,7 @@ export function configureLocation() {
   function startWatch() {
     if (!active || ownSharing !== true || document.hidden || !navigator.onLine || watchId !== undefined) return;
     const epoch = revision, sharingRoom = room;
-    watchId = navigator.geolocation.watchPosition(async sample => {
+    const publish = async sample => {
       if (revision !== epoch || !active || document.hidden || sending) return;
       sending = true;
       try {
@@ -147,10 +149,18 @@ export function configureLocation() {
         lastTime = now;
       } catch (error) { if (revision === epoch) problem(error); }
       finally { sending = false; }
-    },error => {
+    };
+    const onPositionError = error => {
       if (error.code === 1) { active = false; stopWatch(); show(); }
       problem(error);
-    },{enableHighAccuracy:false,maximumAge:120000,timeout:15000});
+    };
+    watchId = navigator.geolocation.watchPosition(publish,onPositionError,
+      {enableHighAccuracy:false,maximumAge:120000,timeout:15000});
+    refreshId = setInterval(() => {
+      if (active && !document.hidden && navigator.onLine && Date.now()-lastTime >= 300000) {
+        currentPosition().then(publish,onPositionError);
+      }
+    },300000);
   }
   function syncToday(visible) {
     if (lastToday === visible) return;
@@ -190,7 +200,13 @@ export function configureLocation() {
       lastToday = undefined;
       ownSharing = clockOn = undefined;
       live = api; room = nextRoom; uid = me; partner = nextPartner;
-      customCity.value = customCountry.value = '';
+      let override = {};
+      if (room) {
+        try { override = JSON.parse(localStorage.getItem('sully.ui.localidade.'+uid)) || {}; }
+        catch { /* No saved locality override. */ }
+      }
+      customCity.value = override.cidade || '';
+      customCountry.value = override.pais || '';
       feedback.textContent = room ? '' : 'Liga primeiro o teu par.';
       if (room) {
         const epoch = revision;
@@ -260,6 +276,24 @@ export function configureLocation() {
       if (revision === epoch) feedback.textContent = 'Partilha desligada e posição apagada.';
     } catch (error) { if (revision === epoch) problem(error); }
     finally { if (revision === epoch) { busy = false; show(); } }
+  };
+  saveCity.onclick = async () => {
+    if (!room) return;
+    const epoch = revision;
+    const cidade = customCity.value.trim(), pais = customCountry.value.trim();
+    try {
+      localStorage.setItem('sully.ui.localidade.'+uid, JSON.stringify({cidade,pais}));
+      feedback.textContent = 'Preferência de cidade guardada neste dispositivo.';
+      if (!active || !ownSharing || !lastPublished || !navigator.onLine) return;
+      const corrected = {latE2:lastPublished.latE2,lngE2:lastPublished.lngE2,
+        cidade:cidade || cityCache?.cidade || '',pais:pais || cityCache?.pais || ''};
+      await live.update(room,corrected);
+      if (revision === epoch) {
+        lastPublished = corrected;
+        lastTime = Date.now();
+        feedback.textContent = 'Cidade atualizada.';
+      }
+    } catch (error) { if (revision === epoch) problem(error); }
   };
   clock.onchange = async () => {
     const epoch = revision, selected = clock.checked;

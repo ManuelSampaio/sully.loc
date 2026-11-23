@@ -25,6 +25,9 @@ test('estado explícito volta a Disponível por 24 h sem escrever', () => {
   assert.equal(effectiveStatus(state,2000+86400000-1),'disponivel');
   assert.equal(effectiveStatus(state,2000+86400000),'sem estado');
   assert.equal(effectiveStatus(undefined,2000),'sem estado');
+  const available={status:'disponivel',ts:1000,until:86401000};
+  assert.equal(effectiveStatus(available,86400999),'disponivel');
+  assert.equal(effectiveStatus(available,86401000),'sem estado');
 });
 
 test('datas partilhadas contam dias de calendário e aniversários anuais',async()=>{

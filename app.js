@@ -84,7 +84,12 @@ function saveDemo() { return persist(KEY,data); }
 function savePersonal() { return persist(localStateKey(),personal); }
 function savePrefs() { persist('sully.prefs',prefs); }
 function requireIdentity() { if(!me) { $('#entry').hidden=false;$('#workspace').hidden=true;toast('Cria a tua conta ou explora a demonstração.');return false; } return true; }
-function setConnection(text) { $('#connection').textContent=text;refreshNetwork(); }
+function setConnection(text) {
+ $('#connection').textContent=text;
+ $('.mode-banner').classList.toggle('sx-network-ok', !/^(Sem rede|Problema|Não foi possível|A restabelecer)/.test(text));
+ $('#sx-profile-connection').textContent=text;
+ refreshNetwork();
+}
 function networkLabel() { if(!navigator.onLine)return cloudConfig.enabled?'Sem rede · alterações em espera':'Sem rede · demonstração disponível';if(reconnecting)return 'A restabelecer ligação…';if(!cloudConfig.enabled) return 'Teste local · sem ligação ao outro telemóvel'; if(!me) return 'Modo privado · entra na tua conta'; if(!currentPair)return 'Conta pessoal · liga-te ao teu par no Perfil'; return navigator.onLine ? 'Ligado à tua conta · confirmação de envio na conversa' : 'Sem rede · alterações em espera neste dispositivo'; }
 function setUnread(unread){
  $('#unread').hidden=!unread;
@@ -197,7 +202,7 @@ function render(){const member=own(),partner=other();$('#home-chat').hidden=!par
  todayUI.render({ status:partner.id&&partnerProfile?.sharing?.status?effectiveStatus(partnerData):null,
   until:partner.id&&partnerProfile?.sharing?.status&&statusExpiry(partnerData)>Date.now()?statusExpiry(partnerData):null,
   period:period(), checkIn:data.moods.find(m=>m.from===me&&m.day===dayKey()&&m.period===period()),
-  ownStatus:statusLabels[status], network:networkLabel() });
+  ownStatus:statusLabels[status] });
  syncLocationUI();
 }
 function renderHistory(){const box=$('#history');box.replaceChildren();const items=[...data.moods.filter(m=>m.from===me||(data.profiles?.[m.from]||data.members[m.from])?.sharing?.mood===true).map(m=>({...m,kind:'mood'})),...data.events.filter(e=>e.kind==='note')].sort((a,b)=>b.ts-a.ts);if(!items.length){box.append(empty('history','Os dias vão ficando aqui.','Os check-ins e as notas que partilharem aparecem neste espaço.'));return;}for(const item of items){const card=el('article','card history-item');card.append(el('time','',dateText(item.ts)+' · '+nameOf(item.from)));if(item.kind==='mood'){const mood=MOODS.find(m=>m[0]===item.mood);const title=el('h2');title.append(icon(mood?.[0]||'heart'),document.createTextNode(' '+(mood?.[2]||item.mood)));card.append(title,el('p','',`${{manha:'Manhã',tarde:'Tarde',noite:'Noite'}[item.period]||''}${item.note?' · '+item.note:''}`));}else card.append(el('h2','','Nota do dia'),el('p','',item.text));box.append(card);}}
