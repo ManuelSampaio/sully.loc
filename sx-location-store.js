@@ -14,9 +14,11 @@ export function locationStore({db, f, userId}) {
     },
     async update(room, value) {
       // Transactions never queue a stale coordinate for later delivery while offline.
-      await f.runTransaction(db, async tx => {
+      return f.runTransaction(db, async tx => {
         const sharing = await tx.get(ref(room,'locationSharing'));
-        if (sharing.data()?.partilha) tx.set(ref(room,'liveLocations'), location(value));
+        if (!sharing.data()?.partilha) return false;
+        tx.set(ref(room,'liveLocations'), location(value));
+        return true;
       });
     },
     async revoke(room, {clock = false} = {}) {

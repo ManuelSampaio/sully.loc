@@ -50,7 +50,8 @@ export function configureLocation() {
   let live, room, uid, partner;
   let ownSharing, partnerSharing, own, other, otherClock, clockOn;
   let lastPublished, lastTime = 0, suspending = false;
-  let revision = 0, active = false, busy = false, watchId, refreshId, sending = false;
+  let revision = 0, active = false, busy = false, clockBusy = false, watchId, refreshId, sending = false;
+  let watchCycle = 0;
   let profileStops = [], todayStops = [], stopPartner, lastToday, cities, cityCache;
   const displayKm = new Intl.NumberFormat('pt-PT');
   function show() {
@@ -59,7 +60,7 @@ export function configureLocation() {
     disable.hidden = ownSharing !== true;
     disable.disabled = busy;
     customCity.disabled = customCountry.disabled = saveCity.disabled = !room;
-    clock.disabled = !room || clockOn === undefined;
+    clock.disabled = clockBusy || !room || clockOn === undefined;
     clock.checked = clockOn === true;
     indicator.hidden = !active || document.hidden || !room;
     const now = Date.now();
@@ -84,7 +85,7 @@ export function configureLocation() {
     ageText.textContent = partnerSharing && other
       ? (otherAge >= day ? 'Última localização há ' + age(otherAge)
         : otherAge >= 600000 ? 'Localização atualizada há ' + age(otherAge) : 'O teu par partilha a localização')
-        + (place(other) && !current ? ' · perto de ' + place(other) : '')
+        + (place(other) ? ' · perto de ' + place(other) : '')
         + (ownSharing && ownAge >= 600000 ? ' · a tua: ' + (ownAge >= day ? 'última localização há ' : 'atualizada há ') + age(ownAge) : '')
       : '';
     ageText.hidden = !ageText.textContent;
@@ -101,6 +102,7 @@ export function configureLocation() {
     }
   }
   function stopWatch() {
+    watchCycle++;
     if (watchId !== undefined) navigator.geolocation?.clearWatch(watchId);
     watchId = undefined;
     clearInterval(refreshId);
@@ -134,23 +136,24 @@ export function configureLocation() {
   }
   function startWatch() {
     if (!active || ownSharing !== true || document.hidden || !navigator.onLine || watchId !== undefined) return;
-    const epoch = revision, sharingRoom = room;
+    const epoch = revision, sharingRoom = room, cycle = ++watchCycle;
     const publish = async sample => {
-      if (revision !== epoch || !active || document.hidden || sending) return;
+      if (revision !== epoch || watchCycle !== cycle || !active || document.hidden || sending) return;
       sending = true;
       try {
         const value = await coordinate(sample.coords,await loadCities());
-        if (revision !== epoch || !active || document.hidden || !navigator.onLine) return;
+        if (revision !== epoch || watchCycle !== cycle || !active || document.hidden || !navigator.onLine) return;
         const now = Date.now();
         if (lastPublished && distanceKm(lastPublished,value) <= .5 && now - lastTime < 300000 &&
             lastPublished.cidade === value.cidade && lastPublished.pais === value.pais) return;
-        await live.update(sharingRoom,value);
+        if (!await live.update(sharingRoom,value)) return;
         lastPublished = value;
         lastTime = now;
       } catch (error) { if (revision === epoch) problem(error); }
       finally { sending = false; }
     };
     const onPositionError = error => {
+      if (watchCycle !== cycle || revision !== epoch) return;
       if (error.code === 1) { active = false; stopWatch(); show(); }
       problem(error);
     };
@@ -191,7 +194,7 @@ export function configureLocation() {
     const nextRoom = api && nextPartner ? pair.id : undefined;
     if (nextRoom !== room || uid !== me) {
       revision++;
-      active = false; busy = false; suspending = false;
+      active = false; busy = false; clockBusy = false; suspending = false;
       lastPublished = cityCache = undefined; lastTime = 0;
       stopWatch();
       profileStops.forEach(stop => stop());
@@ -287,7 +290,7 @@ export function configureLocation() {
       if (!active || !ownSharing || !lastPublished || !navigator.onLine) return;
       const corrected = {latE2:lastPublished.latE2,lngE2:lastPublished.lngE2,
         cidade:cidade || cityCache?.cidade || '',pais:pais || cityCache?.pais || ''};
-      await live.update(room,corrected);
+      if (!await live.update(room,corrected)) return;
       if (revision === epoch) {
         lastPublished = corrected;
         lastTime = Date.now();
@@ -296,6 +299,8 @@ export function configureLocation() {
     } catch (error) { if (revision === epoch) problem(error); }
   };
   clock.onchange = async () => {
+    if (clockBusy || !room) return;
+    clockBusy = true;
     const epoch = revision, selected = clock.checked;
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     clock.disabled = true;
@@ -303,11 +308,11 @@ export function configureLocation() {
       if (selected && zone) await live.updateClock(room,zone,true);
       else await live.removeClock(room);
     } catch (error) { if (revision === epoch) problem(error); }
-    finally { if (revision === epoch) show(); }
+    finally { if (revision === epoch) { clockBusy = false; show(); } }
   };
   function cleanupBeforeLogout() {
     const hadTracking = active || ownSharing === true;
-    if (busy) throw new Error('Aguarda a confirmação da alteração de localização antes de sair.');
+    if (busy || clockBusy) throw new Error('Aguarda a confirmação das alterações de partilha antes de sair.');
     suspending = true; active = false;
     stopWatch();
     if (!room || (!hadTracking && clockOn === false && ownSharing === false)) return;
