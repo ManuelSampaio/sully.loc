@@ -1,5 +1,5 @@
-const CACHE = 'sully-shell-v3-push-diagnostics';
-const SHELL = ['./', './index.html', './style.css?rev=home-focus', './app.js?rev=push-diagnostics', './core.js?rev=home-focus', './icons.js?rev=period-moods', './sky.js', './theme.js', './alerts.js', './push.js?rev=push-diagnostics', './activity.js', './messages.js', './pairing.js', './cloud.js?rev=shared-alerts', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'sully-shell-v3-push-firebase';
+const SHELL = ['./', './index.html', './style.css?rev=home-focus', './app.js?rev=push-firebase', './core.js?rev=home-focus', './icons.js?rev=period-moods', './sky.js', './theme.js', './alerts.js', './push.js?rev=push-firebase', './activity.js', './messages.js', './pairing.js', './cloud.js?rev=shared-alerts', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('sully-shell-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {

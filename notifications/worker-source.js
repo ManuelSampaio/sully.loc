@@ -54,7 +54,7 @@ export async function validateSubscription(input) {
   catch { throw new HttpError(400,'Invalid subscription keys'); }
   return {endpoint:url.href, expirationTime:null, keys:{p256dh:b64url(publicKey),auth:b64url(auth)}};
 }
-export function createWorker({fetchImpl = (...args)=>fetch(...args), now = ()=>Date.now()} = {}) {
+export function createWorker({fetchImpl = (...args)=>globalThis.fetch(...args), now = ()=>Date.now()} = {}) {
   const initialized = new WeakSet();
   async function initialize(db) {
     if (initialized.has(db)) return;
@@ -62,11 +62,37 @@ export function createWorker({fetchImpl = (...args)=>fetch(...args), now = ()=>D
     initialized.add(db);
   }
   async function getDocument(path, token, optional = false) {
-    const response = await fetchImpl(DOCUMENTS + path, {headers:{Authorization:`Bearer ${token}`},redirect:'error',signal:AbortSignal.timeout(8000)});
-    if (optional && response.status === 404) return null;
-    requireThat(response.ok, response.status === 401 ? 401 : response.status === 403 ? 403 : 503, 'Unable to verify account');
-    const document = await response.json();
-    return {data:Object.fromEntries(Object.entries(document.fields || {}).map(([k,v])=>[k,field(v)])),createdAt:Date.parse(document.createTime),updatedAt:Date.parse(document.updateTime||document.createTime)};
+    const resource = path.startsWith('profiles/') ? 'profile' : path.split('/').length === 2 ? 'pair' : 'activity';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      let response;
+      try {
+        response = await fetchImpl(DOCUMENTS + path, {
+          headers: { Authorization: `Bearer ${token}` },
+          redirect: 'error',
+          signal: controller.signal,
+        });
+      } catch {
+        const reason = controller.signal.aborted ? 'timeout' : 'connection';
+        throw new HttpError(503, `Firebase ${resource} ${reason}`);
+      }
+      if (optional && response.status === 404) return null;
+      requireThat(response.ok, response.status === 401 ? 401 : response.status === 403 ? 403 : 503,
+        `Firebase ${resource} HTTP ${response.status}`);
+      try {
+        const document = await response.json();
+        return {
+          data: Object.fromEntries(Object.entries(document.fields || {}).map(([k,v])=>[k,field(v)])),
+          createdAt: Date.parse(document.createTime),
+          updatedAt: Date.parse(document.updateTime || document.createTime),
+        };
+      } catch {
+        throw new HttpError(503, `Firebase ${resource} invalid response`);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
   }
   async function account(request) {
     const token = (request.headers.get('Authorization') || '').match(/^Bearer ([^\s]+)$/)?.[1];
@@ -137,7 +163,7 @@ export function createWorker({fetchImpl = (...args)=>fetch(...args), now = ()=>D
         if(path==='/' && request.method==='GET') {
           requireThat(env.DB,503,'Database binding DB is missing');
           await env.DB.prepare('SELECT 1 AS ready').first();
-          return response({service:'Sully notifications',database:'connected',configured:true,activities:true});
+          return response({service:'Sully notifications',database:'connected',configured:true,activities:true,firebaseDiagnostics:true});
         }
         requireThat(['/v1/key','/v1/subscriptions','/v1/preferences','/v1/send'].includes(path),404,'Not found');
         requireThat((path==='/v1/key' && request.method==='GET') || (path==='/v1/subscriptions' && ['POST','DELETE'].includes(request.method)) || (['/v1/preferences','/v1/send'].includes(path) && request.method==='POST'),405,'Method not allowed');

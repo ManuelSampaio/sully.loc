@@ -51,7 +51,10 @@ export function createPushClient({getToken,getRegistration,onChange=()=>{},onWar
     'Unable to verify account':'O serviço de avisos não conseguiu validar a conta no Firebase.',
    };
    const fallback=response.status===401?'A sessão precisa de ser renovada. Entra novamente.':response.status===409?'Liga as duas contas e tenta novamente.':response.status===429?'Demasiados pedidos. Aguarda um minuto e tenta novamente.':`Não foi possível ${stage}.`;
-   const detail=Object.hasOwn(messages,value?.error)?messages[value.error]:fallback;
+   const firebase=typeof value?.error==='string'&&/^Firebase (profile|pair|activity) (timeout|connection|invalid response|HTTP [1-5][0-9]{2})$/.exec(value.error);
+   const resources={profile:'perfil',pair:'ligação do casal',activity:'atividade'};
+   const reasons={timeout:'tempo excedido',connection:'falha de ligação', 'invalid response':'resposta inválida'};
+   const detail=firebase?`Falha no Firebase ao ler ${resources[firebase[1]]}: ${reasons[firebase[2]]||firebase[2]}.`:Object.hasOwn(messages,value?.error)?messages[value.error]:fallback;
    const stages={'firebase':'Firebase','d1-schema':'D1: tabelas','d1-limits':'D1: limite de pedidos','vapid-key':'chave VAPID'};
    const source=Object.hasOwn(stages,value?.stage)?` · ${stages[value.stage]}`:'';
    const error=new Error(`${detail} (HTTP ${response.status}${source})`);
