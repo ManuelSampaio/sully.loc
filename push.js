@@ -30,10 +30,32 @@ export function createPushClient({getToken,getRegistration,onChange=()=>{},onWar
   const uid=context.uid;check(g);
   if(!uid||!context.pairId)throw new Error('Liga primeiro as duas contas no Perfil.');
   const token=await getToken(uid);check(g);
-  const response=await fetchImpl(PUSH_ENDPOINT+path,{method,headers:{Authorization:`Bearer ${token}`,...(method!=='GET'?{'Content-Type':'application/json'}:{})},...(method!=='GET'?{body:JSON.stringify(data||{})}:{}),cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(10000)});
+  const stage=path==='/v1/key'?'obter a chave':path==='/v1/subscriptions'?'registar o dispositivo':path==='/v1/preferences'?'sincronizar as preferências':'enviar o aviso';
+  let response;
+  try {
+   response=await fetchImpl(PUSH_ENDPOINT+path,{method,headers:{Authorization:`Bearer ${token}`,...(method!=='GET'?{'Content-Type':'application/json'}:{})},...(method!=='GET'?{body:JSON.stringify(data||{})}:{}),cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(10000)});
+  } catch(error) {
+   check(g);
+   const reason=error.name==='TimeoutError'?'tempo de resposta excedido':'sem resposta do serviço';
+   throw new Error(`Não foi possível ${stage} (${reason}).`);
+  }
   check(g);
   let value={};try{value=await response.json();}catch{/* Do not display arbitrary server text. */}
-  if(!response.ok){const error=new Error(response.status===401?'A sessão precisa de ser renovada. Entra novamente.':response.status===409?'Liga as duas contas e tenta novamente.':response.status===429?'Demasiados pedidos. Aguarda um minuto e tenta novamente.':'Não foi possível ligar ao serviço de notificações.');error.status=response.status;throw error;}
+  if(!response.ok){
+   const messages={
+    'Unsupported push service':'O servidor ainda não aceita o serviço de avisos deste navegador.',
+    'Invalid subscription keys':'O navegador devolveu uma subscrição inválida. Fecha e reabre a Sully.',
+    'Device limit reached':'Esta conta atingiu o limite de dispositivos. Desativa os avisos num dispositivo antigo.',
+    'Subscription belongs to another account':'Os avisos deste dispositivo estão associados a outra conta.',
+    'Remove previous subscription first':'Os avisos deste dispositivo estão associados a outra conta.',
+    'Unable to verify account':'O serviço de avisos não conseguiu validar a conta no Firebase.',
+   };
+   const fallback=response.status===401?'A sessão precisa de ser renovada. Entra novamente.':response.status===409?'Liga as duas contas e tenta novamente.':response.status===429?'Demasiados pedidos. Aguarda um minuto e tenta novamente.':`Não foi possível ${stage}.`;
+   const detail=Object.hasOwn(messages,value?.error)?messages[value.error]:fallback;
+   const error=new Error(`${detail} (HTTP ${response.status})`);
+   error.status=response.status;
+   throw error;
+  }
   return value;
  }
  async function removeLocal(){
