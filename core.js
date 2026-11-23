@@ -31,7 +31,7 @@ export function statusExpiry(state) {
 export function effectiveStatus(state, now = Date.now()) {
   const expiry = statusExpiry(state);
   if (expiry > now) return state.status;
-  if (Number(state?.until) > 0 && now < expiry + STATUS_LIFETIME) return 'disponivel';
+  if (state?.status !== 'disponivel' && Number(state?.until) > 0 && now < expiry + STATUS_LIFETIME) return 'disponivel';
   return 'sem estado';
 }
 export function waterAdd(water, day = dayKey()) { return { day, count: (water?.day === day ? water.count : 0) + 1 }; }

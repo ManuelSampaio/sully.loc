@@ -145,6 +145,17 @@ export function configureToday({setStatus}) {
   state.after(detail);
   let lastStatus;
 
+  const inviteTitle = document.createElement('h2');
+  inviteTitle.className = 'sx-invite-title';
+  inviteTitle.textContent = 'Convida a tua pessoa';
+  q('#partner-name').before(inviteTitle);
+  const optionalNote = document.createElement('details');
+  optionalNote.className = 'sx-optional-note';
+  const optionalLabel = document.createElement('summary');
+  optionalLabel.textContent = 'Acrescentar nota';
+  q('#mood-note-label').before(optionalNote);
+  optionalNote.append(optionalLabel, q('#mood-note-label'), q('#mood-note'));
+
   const checkIn = document.createElement('button');
   checkIn.type = 'button';
   checkIn.className = 'secondary sx-checkin';
@@ -163,16 +174,14 @@ export function configureToday({setStatus}) {
     moodCard.hidden = completed;
     checkIn.hidden = !completed;
   });
-  const banner = q('.mode-banner');
   const settingsConnection = document.createElement('p');
+  settingsConnection.id = 'sx-profile-connection';
   settingsConnection.className = 'sx-profile-connection';
   q('#settings-menu').append(settingsConnection);
 
   return {
-    render({status, until, period, checkIn:record, ownStatus, network}) {
+    render({status, until, period, checkIn:record, ownStatus}) {
       stateTrigger.setAttribute('aria-label', 'O meu estado · ' + ownStatus);
-      settingsConnection.textContent = network;
-      banner.classList.toggle('sx-network-ok', !/^(Sem rede|Problema|Não foi possível|A restabelecer)/.test(network));
       chat.classList.toggle('sx-chat-highlight', status === 'disponivel');
       const copy = stateCopy[status] || '';
       heartText.textContent = status === 'dormir' ? 'Deixa um coração' : 'Enviar um coração';
