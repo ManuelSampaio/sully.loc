@@ -1,3 +1,56 @@
+function globeMarkup(gradientId,styleClass,viewBox) {
+  return `<svg viewBox="${viewBox}" class="${styleClass}" aria-hidden="true" hidden>
+      <defs>
+        <radialGradient id="${gradientId}" cx="36%" cy="28%" r="74%">
+          <stop stop-color="#335870"/><stop offset="1" stop-color="#14283d"/>
+        </radialGradient>
+      </defs>
+      <path class="sx-globe-water" fill="url(#${gradientId})"></path>
+      <path class="sx-globe-grid"></path>
+      <path class="sx-map-land" fill-rule="evenodd"></path>
+      <path class="sx-map-connection" fill="none"></path>
+      <g class="sx-map-dot sx-map-you" hidden><circle r="8"/></g>
+      <g class="sx-map-dot sx-map-partner" hidden><circle r="8"/></g>
+    </svg>`;
+}
+
+let assets;
+function globeAssets() {
+  assets ||= Promise.all([
+    import('./sx-globe.js?rev=globo-fundo'),
+    fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
+      if (!response.ok) throw new Error('Mapa indisponível');
+      return response.json();
+    })
+  ]).catch(error => { assets = undefined; throw error; });
+  return assets;
+}
+
+export function createMapBackdrop(meter) {
+  meter.insertAdjacentHTML('afterbegin',globeMarkup('sx-backdrop-ocean','sx-map-backdrop','150 24 340 350'));
+  const image = meter.querySelector('.sx-map-backdrop');
+  let globe, loading, latest;
+  function draw() {
+    image.toggleAttribute('hidden',!latest || !globe);
+    if (!latest) { globe?.stop(); return; }
+    if (!globe) return;
+    if (latest.current) globe.show(latest.own,latest.other,() => {});
+    else globe.showIdle();
+  }
+  return function render(state) {
+    latest = state;
+    draw();
+    if (!state || globe || loading) return;
+    loading = true;
+    globeAssets().then(([{createGlobe},land]) => {
+      globe = createGlobe(image,land);
+      draw();
+    }).catch(() => {
+      // The card remains fully usable if its decorative background cannot load.
+    }).finally(() => { loading = false; });
+  };
+}
+
 export function createMapDialog(refreshOwn) {
   const dialog = document.createElement('dialog');
   dialog.className = 'sx-sheet sx-map-sheet';
@@ -5,19 +58,7 @@ export function createMapDialog(refreshOwn) {
   dialog.innerHTML = `<div class="sx-sheet-heading"><h2 id="sx-map-title">Globo de nós dois</h2>
     <button type="button" class="secondary sx-map-close">Fechar</button></div>
     <p class="sx-map-distance" role="status"></p>
-    <svg viewBox="0 0 640 398" class="sx-map-preview" aria-hidden="true" hidden>
-      <defs>
-        <radialGradient id="sx-globe-ocean" cx="36%" cy="28%" r="74%">
-          <stop stop-color="#335870"/><stop offset="1" stop-color="#14283d"/>
-        </radialGradient>
-      </defs>
-      <path class="sx-globe-water" fill="url(#sx-globe-ocean)"></path>
-      <path class="sx-globe-grid"></path>
-      <path class="sx-map-land" fill-rule="evenodd"></path>
-      <path class="sx-map-connection" fill="none"></path>
-      <g class="sx-map-dot sx-map-you" hidden><circle r="8"/></g>
-      <g class="sx-map-dot sx-map-partner" hidden><circle r="8"/></g>
-    </svg>
+    ${globeMarkup('sx-globe-ocean','sx-map-preview','0 0 640 398')}
     <ul class="sx-map-legend" aria-label="Posições"></ul>
     <button type="button" class="secondary sx-map-refresh">Atualizar a minha localização</button>
     <p class="sx-map-feedback" role="status"></p>
@@ -25,7 +66,6 @@ export function createMapDialog(refreshOwn) {
   document.body.append(dialog);
   const q = value => dialog.querySelector(value);
   const image = q('svg');
-  const land = q('.sx-map-land');
   const distance = q('.sx-map-distance');
   const legend = q('.sx-map-legend');
   const refresh = q('.sx-map-refresh');
@@ -37,13 +77,7 @@ export function createMapDialog(refreshOwn) {
     loading = true;
     failed = false;
     try {
-      const [{createGlobe},land] = await Promise.all([
-        import('./sx-globe.js?rev=globo-v2'),
-        fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
-          if (!response.ok) throw new Error('Mapa indisponível');
-          return response.json();
-        })
-      ]);
+      const [{createGlobe},land] = await globeAssets();
       globe = createGlobe(image,land);
     } catch {
       failed = true;

@@ -120,3 +120,14 @@ body:has(#page-home:not([hidden])) .mode-banner.sx-network-ok { display: none; }
 }
 .sx-map-feedback { font-size: 14px; }
 .sx-map-feedback:empty { display: none; }
+
+#page-home .sx-live-meter { position: relative; isolation: isolate; overflow: hidden; }
+#page-home .sx-distance .sx-map-backdrop {
+  position: absolute; z-index: -1; pointer-events: none; width: min(61%, 292px); height: auto;
+  inset-inline-end: -8px; top: 50%; transform: translateY(-51%);
+  opacity: .52; mask-image: linear-gradient(to right, transparent 2%, #000 55%);
+}
+#page-home .sx-map-backdrop :is(.sx-map-connection,.sx-map-dot) { opacity: .8; }
+#page-home .sx-map-backdrop .sx-map-you { --sx-map-point: #b57c23; }
+#page-home .sx-map-backdrop .sx-map-partner { --sx-map-point: #9474bf; }
+:root[data-theme="dark"] #page-home .sx-distance .sx-map-backdrop { opacity: .46; }

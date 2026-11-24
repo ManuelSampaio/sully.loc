@@ -1,4 +1,4 @@
-import { createMapDialog } from './sx-map.js?rev=globo-v2';
+import { createMapBackdrop, createMapDialog } from './sx-map.js?rev=globo-fundo';
 
 const day = 86400000;
 const rad = Math.PI / 18000; // Coordinates are stored in hundredths of a degree.
@@ -59,6 +59,7 @@ export function configureLocation(openLocationSettings) {
   enableFromHome.addEventListener('click',openLocationSettings);
   const mapButton = meter.querySelector('.sx-live-map');
   const map = createMapDialog(() => refreshOwnPosition());
+  const renderBackdrop = createMapBackdrop(meter);
   mapButton.onclick = () => { map.open(); show(); };
   const distanceText = meter.querySelector('.sx-live-distance');
   const ageText = meter.querySelector('.sx-live-age');
@@ -121,6 +122,7 @@ export function configureLocation(openLocationSettings) {
       const movement = elapsed < 600000 ? observations[key]?.movement : '';
       return [label,place(position),freshness,movement].filter(Boolean).join(' · ');
     };
+    renderBackdrop(lastToday ? {current,own,other} : null);
     map.render({current, distanceLabel, own, other, ownSharing,canUpdate:!document.hidden&&navigator.onLine,
       descriptions:ownSharing ? [describe('own','Tu',own,ownAge),describe('other','O teu par',other,otherAge)] : []});
     const time = q('.sx-partner-clock');
