@@ -73,10 +73,17 @@ export function createMapBackdrop(meter) {
   credit.textContent = '© OpenStreetMap';
   credit.hidden = true;
   meter.append(credit);
+  const distance = meter.querySelector('.sx-live-distance');
+  const distanceLabel = meter.querySelector('.sx-live-label');
   const roadDistance = document.createElement('p');
   roadDistance.className = 'sx-live-road-distance';
   roadDistance.hidden = true;
-  meter.querySelector('.sx-live-route').after(roadDistance);
+  const roadName = document.createElement('span');
+  roadName.className = 'sx-live-road-name';
+  roadName.textContent = 'EN100';
+  roadName.hidden = true;
+  distanceLabel.after(roadName);
+  distance.after(roadDistance);
   let globe, loading, latest, details, road, introStarted = false;
   let loadingDetails = false, loadingRoad = false;
   let visible = typeof IntersectionObserver !== 'function';
@@ -84,9 +91,13 @@ export function createMapBackdrop(meter) {
     image.toggleAttribute('hidden', !latest || !globe);
     const hasPair = latest?.current && globe && (visible || introStarted);
     const matchedRoad = hasPair && roadBetween(latest.own, latest.other);
-    credit.hidden = roadDistance.hidden = !matchedRoad || !road;
+    const hasRoad = Boolean(matchedRoad && road);
+    credit.hidden = roadDistance.hidden = roadName.hidden = !hasRoad;
+    distance.hidden = hasRoad;
+    const heading = hasRoad ? 'Distância por estrada' : 'Distância entre nós';
+    if (distanceLabel.textContent !== heading) distanceLabel.textContent = heading;
     if (!roadDistance.hidden) {
-      const label = `${roadKmLabel(road)} por estrada · EN100`;
+      const label = `${roadKmLabel(road)}`;
       if (roadDistance.textContent !== label) roadDistance.textContent = label;
     }
     if (!latest) {

@@ -58,7 +58,7 @@ body:has(#page-home:not([hidden])) .mode-banner.sx-network-ok { display: none; }
 }
 #page-home .sx-live-label { color: var(--muted); font-size: 14px; }
 #page-home .sx-live-distance { margin: 4px 0; color: var(--ink); }
-#page-home .sx-live-has-distance .sx-live-distance {
+#page-home .sx-live-has-distance :is(.sx-live-distance, .sx-live-road-distance) {
   font-weight: 700; font-size: clamp(1.6rem, 6vw, 2.15rem); font-variant-numeric: tabular-nums;
 }
 #page-home .sx-live-route { margin-bottom: 6px; color: var(--muted); overflow-wrap: anywhere; }
@@ -71,14 +71,24 @@ body:has(#page-home:not([hidden])) .mode-banner.sx-network-ok { display: none; }
 #sx-dates form label:not(.check-label) { display: block; }
 #sx-dates input:not([type="checkbox"]), #sx-dates select { min-height: 44px; }
 
-#page-home .quick-card { display: grid; grid-template-columns: minmax(0,1fr); align-items: center; gap: 4px; }
-#page-home .quick-card .sx-more {
-  justify-self: start; margin: 0; min-height: 44px; padding: 0 8px;
-  font-size: 13px; text-decoration: underline; text-underline-offset: .2em;
+#page-home .quick-card {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 4px;
 }
-#page-home #quick-actions { gap: 4px; }
-#page-home #quick-actions .quick-tile { padding: 4px 6px; gap: 5px; }
-#page-home #quick-actions .quick-tile .s-icon { width: 16px; height: 16px; flex-shrink: 0; }
+#page-home #quick-actions { gap: 8px; }
+#page-home #quick-actions .quick-tile {
+  padding: 8px; gap: 7px; min-height: 47px; min-width: 0;
+  justify-content: center; text-align: center; line-height: 1.2; font-weight: 650;
+  color: var(--ink); background: var(--selected, var(--card)); border: 1px solid var(--line);
+}
+#page-home #quick-actions .quick-tile .s-icon {
+  width: 16px; height: 16px; flex: 0 0 16px; color: var(--accent);
+}
+#page-home .quick-card .sx-more {
+  display: inline-flex; align-items: center; justify-self: center; gap: 6px; margin: 0;
+  min-height: 44px; padding: 0 12px; color: var(--accent); font-size: 13px; font-weight: 600;
+}
+#page-home .quick-card .sx-more:hover { text-decoration: underline; text-underline-offset: .2em; }
+.sx-more-icon { font-size: 18px; line-height: 1; }
 :is(#page-home, .sx-sheet) .mood-card > summary {
   margin: 0; font-weight: 650; min-height: 44px;
 }
@@ -117,9 +127,6 @@ body:has(#page-home:not([hidden])) .mode-banner.sx-network-ok { display: none; }
 :is(#page-home, .sx-sheet) .mood-card .moods small { font-size: 13px; line-height: 1.15; }
 :is(#page-home, .sx-sheet) .sx-optional-note > summary {
   color: var(--accent); font-size: 14px; min-height: 44px;
-}
-@media(max-width:440px) {
-  #page-home #quick-actions .quick-tile .s-icon { display: none; }
 }
 
 
@@ -215,7 +222,11 @@ dialog.sx-map-sheet {
   inset-inline-end: 0; top: 0;
   mask-image: linear-gradient(to right, transparent, #000 30%);
 }
-#page-home .sx-live-road-distance { margin: 2px 0 5px; color: var(--accent); font-size: 12px; font-weight: 650; }
+#page-home .sx-live-road-distance { margin: 4px 0; color: var(--ink); line-height: 1.3; }
+#page-home .sx-live-meter:has(.sx-live-road-name:not([hidden])) .sx-live-label { display: inline; }
+#page-home .sx-live-road-name {
+  display: inline-block; margin-inline-start: 6px; color: var(--accent); font-size: 11px; font-weight: 650;
+}
 #page-home .sx-map-backdrop .sx-map-cities { text-anchor: start; font-size: 19px; }
 #page-home .sx-map-card-credit {
   position: absolute; z-index: 1; inset-inline-end: 7px; bottom: 6px;
@@ -271,9 +282,6 @@ dialog.sx-map-sheet {
 }
 #page-home .sx-reunion-label strong { margin-inline-start: auto; color: var(--accent); font-size: 18px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 #page-home .sx-unpaired .sx-reunion-label { display: none; }
-#page-home #quick-actions .quick-tile {
-  justify-content: center; text-align: center; padding: 5px 8px; line-height: 1.25; min-width: 0;
-}
 #page-home .sx-live-map { position: static; min-height: 44px; margin: 0; padding: 4px 0; font-weight: 600; }
 #page-home .sx-live-map:hover { filter: none; text-decoration: underline; }
 #page-home .sx-live-map::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }

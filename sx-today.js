@@ -125,7 +125,11 @@ export function configureToday({setStatus}) {
   moreTrigger.type = 'button';
   moreTrigger.className = 'text-button sx-more';
   moreTrigger.setAttribute('aria-haspopup', 'dialog');
-  moreTrigger.textContent = 'Mais toques';
+  const moreIcon = document.createElement('span');
+  moreIcon.className = 'sx-more-icon';
+  moreIcon.setAttribute('aria-hidden', 'true');
+  moreIcon.textContent = '⋯';
+  moreTrigger.append(moreIcon, 'Mais toques');
   more.before(moreTrigger);
   const primaryTouches = q('#quick-actions');
   primaryTouches.children[0].lastElementChild.textContent = 'Tenho saudades';
