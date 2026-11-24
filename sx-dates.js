@@ -64,7 +64,8 @@ export function configureDates() {
   const deletion = dialog.querySelector('.sx-delete-date');
   const migrate = dialog.querySelector('.sx-migrate-date');
   const editLocal = dates.querySelector('.sx-date-edit');
-  const reunionLabel = dates.querySelector('.sx-reunion-label');
+  const reunionLabel = document.querySelector('#page-home .sx-reunion-label');
+  const reunionValue = reunionLabel.querySelector('strong');
   let api, room, owner, stop, rows = [], editId, deleteId, busy = false, drawn;
   function localReunion() {
     try { return localStorage.getItem('sully.ui.reencontro') || ''; } catch { return ''; }
@@ -101,12 +102,12 @@ export function configureDates() {
     dates.classList.toggle('sx-shared-reunion',Boolean(reunion));
     if (reunion) {
       reunionLabel.hidden = false;
-      reunionLabel.textContent = reunion.next.days === 0 ? 'O próximo encontro é hoje.' : `Próximo encontro em ${reunion.next.days} ${reunion.next.days === 1 ? 'dia' : 'dias'}.`;
+      reunionValue.textContent = reunion.next.days === 0 ? 'Hoje' : `${reunion.next.days} ${reunion.next.days === 1 ? 'dia' : 'dias'}`;
     }
     if (!reunion && hadReunion) {
       const remaining = (calendarDay(migration) - calendarDay(today));
       reunionLabel.hidden = !(remaining >= 0);
-      reunionLabel.textContent = remaining === 0 ? 'É hoje que se vão ver.' : countdown(remaining) + ' para se verem.';
+      reunionValue.textContent = remaining === 0 ? 'Hoje' : remaining === 1 ? '1 dia' : `${remaining} dias`;
     }
     const localForm = dates.querySelector('form');
     if (room) localForm.hidden = true;

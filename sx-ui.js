@@ -98,7 +98,7 @@
   partner.insertBefore(distance, sendHeart);
   const reunion = document.createElement('div');
   reunion.className = 'sx-reunion';
-  reunion.innerHTML = `<p class="sx-reunion-label" hidden></p>
+  reunion.innerHTML = `<p class="sx-reunion-label" hidden><span>Próximo encontro</span><strong></strong></p>
     <button type="button" class="text-button sx-date-edit">Define quando se vão ver</button>
     <form hidden><label for="sx-reunion-date">Data do reencontro</label>
       <input id="sx-reunion-date" type="date" required>
@@ -119,6 +119,8 @@
   const dateField = reunion.querySelector('input');
   const dateEdit = reunion.querySelector('.sx-date-edit');
   const reunionLabel = reunion.querySelector('.sx-reunion-label');
+  const reunionValue = reunionLabel.querySelector('strong');
+  distance.after(reunionLabel);
   function updateDistance() {
     const today = new Date();
     const todayNumber = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
@@ -126,8 +128,7 @@
     const days = /^\d{4}-\d{2}-\d{2}$/.test(saved) ? (Date.parse(saved) - todayNumber) / 86400000 : NaN;
     if (!reunion.classList.contains('sx-shared-reunion')) {
       reunionLabel.hidden = !(days >= 0);
-      reunionLabel.textContent = days === 0 ? 'É hoje que se vão ver.' : days === 1
-      ? 'Falta 1 dia para se verem.' : `Faltam ${days} dias para se verem.`;
+      reunionValue.textContent = days === 0 ? 'Hoje' : days === 1 ? '1 dia' : `${days} dias`;
       dateEdit.textContent = days >= 0 ? 'Alterar data' : 'Define quando se vão ver';
     }
     if (distance.querySelector('.sx-live-meter')) return;
@@ -189,7 +190,7 @@
     partner.classList.toggle('sx-unpaired', !connected);
     empty.hidden = connected && !noCheckIn;
     empty.textContent = connected
-      ? 'Ainda não partilhou o dia. Envia um coração para o teu par ver quando abrir a Sully.'
+      ? 'Ainda não partilhou o dia.'
       : 'Liga-te ao teu par com um convite para partilharem o dia.';
     mood.classList.toggle('sx-empty', !connected || noCheckIn);
     avatar.firstElementChild.toggleAttribute('hidden', connected);

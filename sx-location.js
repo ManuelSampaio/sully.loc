@@ -86,8 +86,8 @@ export function configureLocation(openLocationSettings) {
     const current = ownSharing && partnerSharing && ownAge < day && otherAge < day;
     const km = current ? distanceKm(own,other) : undefined;
     line.classList.toggle('sx-live-known', km !== undefined);
-    line.style.setProperty('--sx-meter-width', km === undefined ? '100%' : km < 1 ? '0%'
-      : Math.max(12, Math.log10(1 + km) / Math.log10(20001) * 100) + '%');
+    line.style.setProperty('--sx-meter-width', km === undefined ? '100%' : km < 1 ? '56px'
+      : Math.max(25, Math.log10(1 + km) / Math.log10(20001) * 100) + '%');
     const initials = [q('#avatar').textContent, q('#partner-name').textContent];
     line.querySelectorAll('span').forEach((el,i) => { el.textContent = [...initials[i].trim()][0]?.toUpperCase() || '·'; });
     const place = position => [position?.cidade,position?.pais].filter(Boolean).join(', ');

@@ -163,3 +163,23 @@ body:has(#page-home:not([hidden])) .mode-banner.sx-network-ok { display: none; }
   #page-home .page-heading [data-page="history"] { grid-column: 2; }
   #page-home .sx-state-trigger { grid-column: 1/-1; grid-row: 2; justify-self: start; }
 }
+
+#page-home .sx-reunion-label {
+  grid-column: 1/-1; display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 9px 12px; color: var(--ink); background: var(--selected,var(--card));
+  border-radius: 12px; margin: 0 0 5px; font-size: 14px;
+}
+#page-home .sx-reunion-label strong { color: var(--accent); font-size: 18px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#page-home .sx-unpaired .sx-reunion-label { display: none; }
+#page-home .quick-card { grid-template-columns: minmax(0,1fr); gap: 6px; }
+#page-home .quick-card .sx-more { justify-self: start; margin: 0; padding: 0 10px; }
+#page-home #quick-actions .quick-tile {
+  justify-content: center; text-align: center; padding: 5px 8px; line-height: 1.25; min-width: 0;
+}
+#page-home .sx-live-map { min-height: 44px; width: auto; height: auto; margin: 0; padding: 4px 10px; }
+.sx-sheet .sx-sheet-heart { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; }
+.sx-sheet-heart .s-icon { width: 18px; height: 18px; }
+.sx-live-line { width: clamp(56px,var(--sx-meter-width,100%),160px); }
+.sx-live-line::before,.sx-live-line.sx-live-known::before { border-top: 1px dashed var(--muted); opacity: .65; }
+.sx-live-line span { transform: none; border: 1px solid var(--line); font-weight: 600; }
+.sx-live-line span:last-child { margin-left: 0; transform: none; }
