@@ -87,4 +87,6 @@ Validação desta alteração: 26 testes do cliente/lógica e 12 do emissor. Os 
 
 ### Lista local de cidades
 
-`sx-cities.json` usa [Natural Earth 1:50m Populated Places Simple v5.1.2](https://www.naturalearthdata.com/downloads/50m-cultural-vectors/50m-populated-places/), dados de domínio público. A lista é servida pelo próprio Sully e só é pedida quando alguém ativa a localização. A aproximação procura uma cidade da lista até 300 km. A cidade e o país podem ser corrigidos no Perfil.
+`sx-cities.json` usa [Natural Earth 1:10m Populated Places Simple v5.1.2](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-populated-places/), dados de domínio público. A lista é servida pelo próprio Sully e só é pedida quando alguém ativa a localização. A aproximação procura uma cidade da lista até 300 km. A cidade e o país podem ser corrigidos no Perfil.
+
+O fundo de `sx-map-land.json` usa [Natural Earth 1:110m Land](https://www.naturalearthdata.com/downloads/110m-physical-vectors/). O mapa só pede esse ficheiro ao abrir. As posições são desenhadas no dispositivo, sem enviar as coordenadas para um serviço de mapas.

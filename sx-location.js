@@ -1,3 +1,5 @@
+import { createMapDialog } from './sx-map.js';
+
 const day = 86400000;
 const rad = Math.PI / 18000; // Coordinates are stored in hundredths of a degree.
 
@@ -25,7 +27,7 @@ function cityNear(cities, position) {
 
 function currentPosition() {
   return new Promise((resolve,reject) => navigator.geolocation
-    ? navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,maximumAge:120000,timeout:15000})
+    ? navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,maximumAge:0,timeout:15000})
     : reject(new Error('Este dispositivo não disponibiliza a localização.')));
 }
 
@@ -48,20 +50,25 @@ export function configureLocation(openLocationSettings) {
     <p class="sx-live-route" hidden></p>
     <div class="sx-live-line" aria-hidden="true"><span></span><span></span></div>
     <p class="sx-live-age" hidden></p>
-    <button class="text-button sx-live-enable" type="button" hidden>Ativar localização</button>`;
+    <button class="text-button sx-live-enable" type="button" hidden>Ativar localização</button>
+    <button class="text-button sx-live-map" type="button" hidden>Ver mapa</button>`;
   q('#page-home .sx-distance').prepend(meter);
   const line = meter.querySelector('.sx-live-line');
   const routeText = meter.querySelector('.sx-live-route');
   const enableFromHome = meter.querySelector('.sx-live-enable');
   enableFromHome.addEventListener('click',openLocationSettings);
+  const mapButton = meter.querySelector('.sx-live-map');
+  const map = createMapDialog(() => refreshOwnPosition());
+  mapButton.onclick = () => { map.open(); show(); };
   const distanceText = meter.querySelector('.sx-live-distance');
   const ageText = meter.querySelector('.sx-live-age');
   let live, room, uid, partner;
   let ownSharing, partnerSharing, own, other, otherClock, clockOn;
   let lastPublished, lastTime = 0, suspending = false;
-  let revision = 0, active = false, busy = false, clockBusy = false, watchId, refreshId, sending = false;
+  let revision = 0, active = false, busy = false, clockBusy = false, watchId, refreshId, sending;
   let watchCycle = 0;
   let profileStops = [], todayStops = [], stopPartner, lastToday, cities, cityCache;
+  const observations = {};
   const displayKm = new Intl.NumberFormat('pt-PT');
   function show() {
     enable.disabled = busy || !room || ownSharing === undefined;
@@ -98,6 +105,7 @@ export function configureLocation(openLocationSettings) {
     routeText.hidden = km === undefined || !route;
     routeText.textContent = routeText.hidden ? '' : route;
     enableFromHome.hidden = !room || ownSharing !== false || !navigator.onLine;
+    mapButton.hidden = !room || ownSharing !== true;
     const age = ms => ms >= day ? `${Math.floor(ms/day)} d` : ms >= 3600000
       ? `${Math.floor(ms/3600000)} h` : `${Math.max(1,Math.floor(ms/60000))} min`;
     ageText.textContent = partnerSharing && other
@@ -107,6 +115,14 @@ export function configureLocation(openLocationSettings) {
         + (ownSharing && ownAge >= 600000 ? ' · a tua: ' + (ownAge >= day ? 'última localização há ' : 'atualizada há ') + age(ownAge) : '')
       : '';
     ageText.hidden = !ageText.textContent;
+    const describe = (key, label, position, elapsed) => {
+      if (!position || !Number.isFinite(elapsed)) return label + ' · sem posição partilhada';
+      const freshness = elapsed < 60000 ? 'agora' : 'há ' + age(elapsed);
+      const movement = elapsed < 600000 ? observations[key]?.movement : '';
+      return [label,place(position),freshness,movement].filter(Boolean).join(' · ');
+    };
+    map.render({current, distanceLabel, own, other, ownSharing,canUpdate:!document.hidden&&navigator.onLine,
+      descriptions:[describe('own','Tu',own,ownAge),describe('other','O teu par',other,otherAge)]});
     const time = q('.sx-partner-clock');
     if (time) {
       time.hidden = true;
@@ -140,8 +156,9 @@ export function configureLocation(openLocationSettings) {
   function coordinate(coords, dataset) {
     // Normalize negative zero, which Firestore would store as a double.
     const position = {latE2:Math.round(coords.latitude*100) + 0,lngE2:Math.round(coords.longitude*100) + 0};
-    if (!cityCache || distanceKm(cityCache.position,position) >= 5) {
-      cityCache = {position,...cityNear(dataset,position)};
+    if (!cityCache || cityCache.dataset !== dataset ||
+        position.latE2 !== cityCache.position.latE2 || position.lngE2 !== cityCache.position.lngE2) {
+      cityCache = {position,dataset,...cityNear(dataset,position)};
     }
     return {...position, cidade:customCity.value.trim() || cityCache.cidade,
       pais:customCountry.value.trim() || cityCache.pais};
@@ -153,36 +170,99 @@ export function configureLocation(openLocationSettings) {
     }).catch(() => { cities = undefined; return []; });
     return cities;
   }
-  function startWatch() {
-    if (!active || ownSharing !== true || document.hidden || !navigator.onLine || watchId !== undefined) return;
-    const epoch = revision, sharingRoom = room, cycle = ++watchCycle;
-    const publish = async sample => {
-      if (revision !== epoch || watchCycle !== cycle || !active || document.hidden || sending) return;
-      sending = true;
-      try {
-        const value = coordinate(sample.coords,await loadCities());
-        if (revision !== epoch || watchCycle !== cycle || !active || document.hidden || !navigator.onLine) return;
-        const now = Date.now();
-        if (lastPublished && distanceKm(lastPublished,value) <= .5 && now - lastTime < 300000 &&
-            lastPublished.cidade === value.cidade && lastPublished.pais === value.pais) return;
-        if (!await live.update(sharingRoom,value)) return;
-        lastPublished = value;
-        lastTime = now;
-      } catch (error) { if (revision === epoch) problem(error); }
-      finally { sending = false; }
-    };
-    const onPositionError = error => {
-      if (watchCycle !== cycle || revision !== epoch) return;
-      if (error.code === 1) { active = false; stopWatch(); show(); }
-      problem(error);
-    };
-    watchId = navigator.geolocation.watchPosition(publish,onPositionError,
-      {enableHighAccuracy:false,maximumAge:120000,timeout:15000});
+  function eligible(roomAtStart, cycle) {
+    return room && roomAtStart === room && watchCycle === cycle && active && ownSharing === true &&
+      !document.hidden && navigator.onLine;
+  }
+  async function publish(sample, roomAtStart, cycle, force = false) {
+    if (!eligible(roomAtStart,cycle)) return false;
+    if (sending) {
+      if (!force) return false;
+      await sending.catch(() => {});
+      if (!eligible(roomAtStart,cycle)) return false;
+    }
+    if (sending) return false;
+    const task = (async () => {
+      const value = coordinate(sample.coords,await loadCities());
+      if (!eligible(roomAtStart,cycle)) return false;
+      const now = Date.now();
+      if (!force && lastPublished && distanceKm(lastPublished,value) <= .5 && now - lastTime < 300000 &&
+          lastPublished.cidade === value.cidade && lastPublished.pais === value.pais) return false;
+      const result = await live.update(roomAtStart,value);
+      if (result && eligible(roomAtStart,cycle)) { lastPublished = value; lastTime = now; }
+      return result;
+    })();
+    sending = task;
+    try { return await task; }
+    finally { if (sending === task) sending = undefined; }
+  }
+  function rememberPermission(allowed) {
+    try {
+      const key = 'sully.ui.gps.'+uid;
+      if (allowed) localStorage.setItem(key,'sim');
+      else localStorage.removeItem(key);
+    } catch { /* Permission persists only if storage is available. */ }
+  }
+  function positionError(error,cycle) {
+    if (watchCycle !== cycle) return;
+    if (error.code === 1) { rememberPermission(false); active = false; stopWatch(); show(); }
+    problem(error);
+  }
+  async function refreshOwnPosition() {
+    if (!room || ownSharing !== true || suspending || document.hidden || !navigator.onLine) {
+      throw new Error('Partilha indisponível.');
+    }
+    if (watchId === undefined) {
+      active = true;
+      startWatch(false);
+    }
+    const sharingRoom = room, cycle = watchCycle;
+    try {
+      if (!await publish(await currentPosition(),sharingRoom,cycle,true)) throw new Error('Posição não confirmada.');
+      if (eligible(sharingRoom,cycle)) rememberPermission(true);
+    } catch (error) {
+      positionError(error,cycle);
+      throw error;
+    }
+  }
+  function startWatch(refresh = true) {
+    if (!active || ownSharing !== true || suspending || document.hidden || !navigator.onLine ||
+        watchId !== undefined || !navigator.geolocation) return;
+    const sharingRoom = room, cycle = ++watchCycle;
+    const inspect = error => positionError(error,cycle);
+    watchId = navigator.geolocation.watchPosition(sample => {
+      publish(sample,sharingRoom,cycle).catch(inspect);
+    },inspect,{enableHighAccuracy:false,maximumAge:0,timeout:15000});
+    if (refresh) refreshOwnPosition().catch(() => {});
     refreshId = setInterval(() => {
-      if (active && !document.hidden && navigator.onLine && Date.now()-lastTime >= 300000) {
-        currentPosition().then(publish,onPositionError);
-      }
+      if (eligible(sharingRoom,cycle) && Date.now()-lastTime >= 300000) refreshOwnPosition().catch(() => {});
     },300000);
+  }
+  function resumeAuthorizedWatch(epoch) {
+    const remembered = () => {
+      try { return localStorage.getItem('sully.ui.gps.'+uid) === 'sim'; }
+      catch { return false; }
+    };
+    const resume = allowed => {
+      if (!allowed || revision !== epoch || !ownSharing || suspending || busy) return;
+      active = true; startWatch(); show();
+    };
+    if (!navigator.permissions?.query) { resume(remembered()); return; }
+    navigator.permissions.query({name:'geolocation'}).then(permission => {
+      resume(permission.state === 'granted');
+    }).catch(() => resume(remembered()));
+  }
+  function observePosition(key, position) {
+    if (!position) { delete observations[key]; return position; }
+    const previous = observations[key];
+    const timestamp = position.atualizadoEm?.toMillis();
+    if (Number.isFinite(timestamp) && timestamp !== previous?.timestamp) {
+      const movement = previous && timestamp > previous.timestamp && timestamp-previous.timestamp < 900000
+        ? distanceKm(previous.position,position) > .5 ? 'mudou de posição' : 'sem mudança detetada'
+        : '';
+      observations[key] = {position,timestamp,movement};
+    }
+    return position;
   }
   function syncToday(visible) {
     if (lastToday === visible) return;
@@ -191,7 +271,7 @@ export function configureLocation(openLocationSettings) {
     if (!visible || !room) return;
     const epoch = revision;
     const keep = fn => value => { if (epoch === revision && lastToday) { fn(value); show(); } };
-    todayStops.push(live.watch(room,'liveLocations',uid,keep(value => { own = value; }),() => {}));
+    todayStops.push(live.watch(room,'liveLocations',uid,keep(value => { own = observePosition('own',value); }),() => {}));
     todayStops.push(live.watch(room,'clocks',partner,keep(value => { otherClock = value?.fuso; }),
       keep(() => { otherClock = undefined; })));
     todayStops.push(live.watch(room,'locationSharing',partner,keep(value => {
@@ -199,13 +279,14 @@ export function configureLocation(openLocationSettings) {
       stopPartner?.(); stopPartner = undefined;
       partnerSharing = value?.partilha === true;
       other = undefined;
+      if (!partnerSharing) delete observations.other;
       if (partnerSharing) stopPartner = live.watch(room,'liveLocations',partner,
-        keep(value => { if (partnerSharing) other = value; }),
+        keep(value => { if (partnerSharing) other = observePosition('other',value); }),
         keep(error => {
-          other = undefined;
+          other = observePosition('other',null);
           if (error.code === 'permission-denied') partnerSharing = false;
         }));
-    }),keep(() => { stopPartner?.(); partnerSharing = false; other = undefined; })));
+    }),keep(() => { stopPartner?.(); partnerSharing = false; other = observePosition('other',null); })));
   }
   function sync(api, pair, me, isHome) {
     const nextPartner = pair?.members?.length === 2 && pair.members.includes(me)
@@ -213,6 +294,9 @@ export function configureLocation(openLocationSettings) {
     const nextRoom = api && nextPartner ? pair.id : undefined;
     if (nextRoom !== room || uid !== me) {
       revision++;
+      map.close();
+      delete observations.own;
+      delete observations.other;
       active = false; busy = false; clockBusy = false; suspending = false;
       lastPublished = cityCache = undefined; lastTime = 0;
       stopWatch();
@@ -237,10 +321,7 @@ export function configureLocation(openLocationSettings) {
           ownSharing = value?.partilha === true;
           if (ownSharing && !suspending && !busy) {
             if (active) startWatch();
-            else navigator.permissions?.query({name:'geolocation'}).then(permission => {
-              if (permission.state !== 'granted' || revision !== epoch || !ownSharing || suspending || busy) return;
-              active = true; startWatch(); show();
-            }).catch(() => {});
+            else resumeAuthorizedWatch(epoch);
           } else if (!ownSharing) { active = false; stopWatch(); }
           show();
         },problem));
@@ -277,6 +358,7 @@ export function configureLocation(openLocationSettings) {
       await api.enable(sharingRoom,value);
       if (revision === epoch) {
         ownSharing = true;
+        rememberPermission(true);
         lastPublished = value; lastTime = Date.now();
         feedback.textContent = 'Partilha ativa. A posição atualiza com o Sully aberto.';
         startWatch();
@@ -291,11 +373,15 @@ export function configureLocation(openLocationSettings) {
     if (!room) return;
     const epoch = revision;
     busy = true; suspending = true; active = false; stopWatch();
+    rememberPermission(false);
     feedback.textContent = 'A desligar. A remoção fica confirmada quando houver ligação.';
     show();
     try {
       await live.revoke(room);
-      if (revision === epoch) feedback.textContent = 'Partilha desligada e posição apagada.';
+      if (revision === epoch) {
+        delete observations.own;
+        feedback.textContent = 'Partilha desligada e posição apagada.';
+      }
     } catch (error) { if (revision === epoch) problem(error); }
     finally { if (revision === epoch) { busy = false; show(); } }
   };
