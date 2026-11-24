@@ -186,6 +186,7 @@ dialog.sx-map-sheet {
   padding: 7px 11px; border-radius: 10px; background: var(--selected, var(--bg));
   color: var(--ink); font-size: 13px;
 }
+.sx-map-road-summary small { flex-basis: 100%; color: var(--muted); font-size: 12px; }
 .sx-map-road-summary strong { color: var(--accent); font-size: 16px; }
 .sx-map-road-route {
   fill: none; stroke: #274fae; stroke-width: 5.5; stroke-linecap: round; stroke-linejoin: round;
@@ -293,3 +294,8 @@ dialog.sx-map-sheet {
 #page-home .sx-live-enable { position: relative; z-index: 1; margin-inline-end: 12px; }
 .sx-sheet .sx-sheet-heart { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; }
 .sx-sheet-heart .s-icon { width: 18px; height: 18px; }
+
+.toast-undo {
+  margin-inline-start: 10px; padding-inline: 10px; min-height: 44px;
+  color: inherit; font-weight: 700; text-decoration: underline;
+}

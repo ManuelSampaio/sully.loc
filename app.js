@@ -8,8 +8,8 @@ import { applyTheme } from './theme.js';
 import { renderSky, skyState } from './sky.js';
 import { icon, mountIcons } from './icons.js?rev=period-moods';
 import { MOODS, MOOD_PERIODS, moodsForPeriod, QUICK, dayKey, period, effectiveStatus, statusExpiry, STATUS_LIFETIME, waterAdd, validEvent, isDrawing } from './core.js?rev=home-focus';
-import { configureLocation } from './sx-location.js?rev=mapa-costeiro';
-import { configureToday } from './sx-today.js?rev=hoje-atalhos';
+import { configureLocation } from './sx-location.js?rev=costa-checkin';
+import { configureToday } from './sx-today.js?rev=costa-checkin';
 import { cloudConfig } from './config.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -79,7 +79,19 @@ const other = () => cloudConfig.enabled ? {id:currentPair?.members.find(id=>id!=
 function profileName(id) { return data.profiles?.[id]?.name || data.members[id]?.name || 'O teu par'; }
 function nicknameOf(id) { const value=personal.nicknames?.[id];return id && id!==me && typeof value==='string' ? value.trim().slice(0,40) : ''; }
 function nameOf(id) { return nicknameOf(id) || profileName(id); }
-function toast(message) { $('#toast').textContent=message; $('#toast').hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('#toast').hidden=true,5500); }
+function toast(message, undo) {
+ const box=$('#toast');
+ box.textContent=message;
+ if(undo){
+  const action=el('button','toast-undo','Desfazer');
+  action.type='button';
+  action.onclick=()=>{box.hidden=true;undo();};
+  box.append(action);
+ }
+ box.hidden=false;
+ clearTimeout(toastTimer);
+ toastTimer=setTimeout(()=>box.hidden=true,undo?9000:5500);
+}
 function saveDemo() { return persist(KEY,data); }
 function savePersonal() { return persist(localStateKey(),personal); }
 function savePrefs() { persist('sully.prefs',prefs); }
@@ -110,7 +122,12 @@ $$('[data-page]:not(#home-link)').forEach(b=>b.addEventListener('click',()=>show
 $$('.dialog-close').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 function el(tag,cls,text) { const e=document.createElement(tag); if(cls)e.className=cls; if(text!==undefined)e.textContent=text; return e; }
 function dateText(ts) { return new Date(ts).toLocaleString('pt-PT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
-function moodRecord() { return data.moods.find(m=>m.from===me && m.day===dayKey() && m.period===selectedPeriod); }
+function moodRecord(forPeriod=selectedPeriod) {
+ const id=`${me}_${dayKey()}_${forPeriod}`;
+ return pendingMoods.get(id) || data.moods.find(m=>m.from===me && m.day===dayKey() && m.period===forPeriod);
+}
+const pendingMoods=new Map();
+const failedMoods=new Set();
 const moodDrafts=new Map();
 const moodDraftKey=()=>`${me||'guest'}_${dayKey()}_${selectedPeriod}`;
 function captureMoodDraft(){moodDrafts.set(moodDraftKey(),{mood:selectedMood,note:$('#mood-note').value});}
@@ -128,17 +145,49 @@ function renderMood(){
  $('#mood-question').textContent=config.question;$('#mood-note').placeholder=config.prompt;
  $('#mood-note-label').textContent=config.prompt+' (opcional)';
  const old=record&&!config.ids.includes(record.mood);
- $('#mood-feedback').textContent=old?'O teu mood anterior continua disponível.':record?'Atualizar também avisa o teu par, se partilhares o mood.':own().sharing?.mood?'Ao partilhar, avisas o teu par.':'Só para ti. Podes ativar a partilha em Privacidade.';
+ const submit=$('#mood-form button[type="submit"]');
+ const failed=failedMoods.has(moodDraftKey());
+ submit.disabled=!!record?.pending;
+ submit.textContent=record?.pending?'A guardar…':failed?'Tentar novamente':'Partilhar';
+ $('#mood-feedback').textContent=record?.pending?'Check-in a sincronizar.':failed?'O check-in não foi enviado. A tua escolha está guardada neste ecrã.':old?'O teu mood anterior continua disponível.':record?'Atualizar também avisa o teu par, se partilhares o mood.':own().sharing?.mood?'Ao partilhar, avisas o teu par.':'Só para ti. Podes ativar a partilha em Privacidade.';
 }
 $('#mood-note').addEventListener('input',captureMoodDraft);
 $$('[data-period]').forEach(b=>b.addEventListener('click',()=>{selectedPeriod=b.dataset.period;loadMood();}));
-function write(collection,id,value,onAck=()=>{}) {
+function write(collection,id,value,onAck=()=>{},onFail) {
  if(!requireIdentity())return false;
  if(!cloudConfig.enabled) { if(collection==='members')data.members[id]=value; else {const list=data[collection]||(data[collection]=[]);const idx=list.findIndex(x=>x.id===id);idx<0?list.push(value):list.splice(idx,1,value);} if(!saveDemo())return false;render();return true; }
  if(!cloud){toast('A ligação ainda está a iniciar. Tenta novamente.');return false;}
- const sender=me,room=chatRoom();try{pendingWrites++;refreshNetwork();const done=()=>{pendingWrites=Math.max(0,pendingWrites-1);refreshNetwork();};cloud.write(collection,id,value,()=>{done();onAck();if(me!==sender||chatRoom()!==room)return;if(collection==='events'){failedEvents.delete(id);push.send(id,value.from);if(me===sender&&chatRoom()===room)renderChat();}if(collection==='members'){updatePushSession(true);push.syncQuiet(true);}const type={moods:'mood',members:'status',locations:'location'}[collection];if(type&&own().sharing?.[type]===true)push.sendActivity(type,id,value.ts,sender);},error=>{done();if(collection==='events'&&me===sender&&chatRoom()===room){failedEvents.set(id,{...value,failed:true,pending:false});chatSignature='';renderChat();$('#chat-feedback').textContent='Uma mensagem não foi enviada. Podes tentar novamente.';}else if(collection==='members'&&value.status==='treinar'&&error?.code?.includes('permission-denied'))toast('Ainda não foi possível guardar «A treinar». Escolhe outro estado ou tenta mais tarde.');else toast(`Não foi possível sincronizar: ${friendlyError(error)}`);});return true;}catch(error){pendingWrites=Math.max(0,pendingWrites-1);refreshNetwork();toast(friendlyError(error));return false;}
+ const sender=me,room=chatRoom();try{pendingWrites++;refreshNetwork();const done=()=>{pendingWrites=Math.max(0,pendingWrites-1);refreshNetwork();};cloud.write(collection,id,value,()=>{done();onAck();if(me!==sender||chatRoom()!==room)return;if(collection==='events'){failedEvents.delete(id);push.send(id,value.from);if(me===sender&&chatRoom()===room)renderChat();}if(collection==='members'){updatePushSession(true);push.syncQuiet(true);}const type={moods:'mood',members:'status',locations:'location'}[collection];if(type&&own().sharing?.[type]===true)push.sendActivity(type,id,value.ts,sender);},error=>{done();if(collection==='events'&&me===sender&&chatRoom()===room){failedEvents.set(id,{...value,failed:true,pending:false});chatSignature='';renderChat();$('#chat-feedback').textContent='Uma mensagem não foi enviada. Podes tentar novamente.';}else if(onFail){onFail(error);}else if(collection==='members'&&value.status==='treinar'&&error?.code?.includes('permission-denied'))toast('Ainda não foi possível guardar «A treinar». Escolhe outro estado ou tenta mais tarde.');else toast(`Não foi possível sincronizar: ${friendlyError(error)}`);});return true;}catch(error){pendingWrites=Math.max(0,pendingWrites-1);refreshNetwork();toast(friendlyError(error));return false;}
 }
-$('#mood-form').addEventListener('submit',e=>{e.preventDefault();if(!selectedMood){toast('Escolhe primeiro como te sentes.');return;}if(!requireIdentity())return;const id=`${me}_${dayKey()}_${selectedPeriod}`;const value={id,from:me,day:dayKey(),period:selectedPeriod,mood:selectedMood,note:$('#mood-note').value.trim(),ts:Date.now()};if(write('moods',id,value))toast(cloudConfig.enabled?'Check-in guardado para sincronizar.':'Check-in guardado neste navegador.');});
+$('#mood-form').addEventListener('submit', e => {
+ e.preventDefault();
+ if (!selectedMood) { toast('Escolhe primeiro como te sentes.'); return; }
+ if (!requireIdentity()) return;
+ const id=moodDraftKey();
+ if (pendingMoods.has(id) || moodRecord()?.pending) return;
+ const value={id,from:me,day:dayKey(),period:selectedPeriod,mood:selectedMood,note:$('#mood-note').value.trim(),ts:Date.now()};
+ if (!cloudConfig.enabled) {
+  if(write('moods',id,value)) toast('Check-in guardado neste navegador.');
+  return;
+ }
+ const pending={...value,pending:true};
+ failedMoods.delete(id);
+ pendingMoods.set(id,pending);
+ const finish=failed=>{
+  if(pendingMoods.get(id)!==pending) return;
+  pendingMoods.delete(id);
+  if(failed) {
+   failedMoods.add(id);
+   toast('Não foi possível enviar o check-in. Podes tentar novamente.');
+  } else {
+   const existing=data.moods.find(m=>m.id===id);
+   if(!existing || existing.ts<=value.ts) data.moods=[...data.moods.filter(m=>m.id!==id),value];
+  }
+  render();
+ };
+ if(write('moods',id,value,()=>finish(false),()=>finish(true))) render();
+ else {pendingMoods.delete(id);render();}
+});
 function addEvent(kind,text,extra={}) { if(!requireIdentity())return false;const event={id:crypto.randomUUID(),from:me,kind,text,ts:Date.now(),...extra};if(!validEvent(event)){toast('Este conteúdo não pode ser enviado.');return false;}return write(kind==='location'?'locations':'events',kind==='location'?me:event.id,event); }
 function compose(kind,title,iconName,text) {if(!requireIdentity())return;quickKind=kind;$('#dialog-title').textContent=title;$('#dialog-emoji').replaceChildren(icon(iconName));$('#quick-text').value=text;$('#send-context').textContent=(cloudConfig.enabled?'Vai para a vossa conversa. A sincronização não confirma leitura.':'Modo local: fica apenas neste navegador.')+(iconName==='onde'?' É só um pedido: o teu par decide se quer partilhar a posição.':'');$('#message-dialog').showModal();}
 for(const [id,,title,text] of QUICK){const b=el('button','quick-tile');b.append(icon(id),el('span','',title));b.addEventListener('click',()=>compose('quick',title,id,text));$(id==='saudades'||id==='falar'?'#quick-actions':'#more-quick-actions').append(b);}
@@ -200,7 +249,7 @@ const statusLabels={treinar:'A treinar',disponivel:'Disponível',trabalhar:'A tr
 function render(){const member=own(),partner=other();$('#home-link').hidden=!!partner.id;$('#send-heart').hidden=!partner.id;$('.quick-card').hidden=!partner.id;$('#settings-name').textContent=member.name;$('#settings-avatar').textContent=member.name.slice(0,1).toUpperCase();$('#settings-link-state').textContent=partner.id?'Ligado a '+nameOf(partner.id):currentPair?'Convite à espera de resposta':'Liga-te ao teu par em O nosso espaço';$('#my-name').textContent=member.name;$('#avatar').textContent=member.name.slice(0,1).toUpperCase();$('#partner-name').textContent=nameOf(partner.uid||partner.id);if(document.activeElement!==$('#name-input'))$('#name-input').value=member.name;const partnerData=data.members[partner.uid||partner.id];const partnerProfile=data.profiles?.[partner.id]||partnerData;$('#partner-state').textContent=partner.id?(partnerProfile?.sharing?.status?statusLabels[effectiveStatus(partnerData)]:'Estado privado'):'À espera de ligação';const recent=data.moods.filter(m=>m.from===(partner.uid||partner.id)&&(partnerProfile?.sharing?.mood===true)).sort((a,b)=>b.ts-a.ts)[0];if(recent){const mood=MOODS.find(m=>m[0]===recent.mood);$('#partner-mood').replaceChildren(icon(mood?.[0]||'heart'),document.createTextNode(` ${mood?.[2]||recent.mood} · ${dateText(recent.ts)}`));$('#partner-note').textContent=recent.note||'Partilhou um bocadinho do dia contigo.';}else{$('#partner-mood').textContent=partner.id?(partnerProfile?.sharing?.mood?'Ainda sem check-in.':'Humor privado'):'Liga as duas contas no Perfil.';$('#partner-note').textContent='';}const status=effectiveStatus(data.members[me]);$('#current-status').textContent=statusLabels[status]||'Ao meu ritmo.';$$('[data-status]').forEach(b=>{b.classList.toggle('selected',b.dataset.status===status);b.setAttribute('aria-pressed',b.dataset.status===status);});const count=personal.water?.day===dayKey()?personal.water.count:0;$('#water-count').textContent=count;$('#water-drops').textContent='●'.repeat(Math.min(count,12))+'○'.repeat(Math.max(0,8-count));renderMood();renderChat();renderHistory();renderAccount();updatePushSession();showNextTouch();setConnection(networkLabel());
  todayUI.render({ status:partner.id&&partnerProfile?.sharing?.status?effectiveStatus(partnerData):null,
   until:partner.id&&partnerProfile?.sharing?.status&&statusExpiry(partnerData)>Date.now()?statusExpiry(partnerData):null,
-  period:period(), checkIn:data.moods.find(m=>m.from===me&&m.day===dayKey()&&m.period===period()),
+  period:period(), checkIn:moodRecord(period()), checkInFailed:failedMoods.has(`${me}_${dayKey()}_${period()}`),
   ownStatus:statusLabels[status] });
  syncLocationUI();
 }
@@ -230,8 +279,39 @@ $('#nickname-form').onsubmit=e=>{e.preventDefault();saveNickname($('#nickname-in
 $('#reset-nickname').onclick=()=>saveNickname('');
 $('#save-name').onclick=saveProfile;$('#sharing-form').onsubmit=e=>{e.preventDefault();saveProfile();};
 $('#demo-person').value=me||'a';$('#demo-person').onchange=()=>{resetTouches();me=$('#demo-person').value;persist('sully.demo.person',me);personal=read(localStateKey(),{});loadMood();render();toast('Agora estás a experimentar como '+own().name);};
-$('#water-reminder').value=String(prefs.waterMinutes||0);$('#water-reminder').onchange=()=>{prefs.waterMinutes=Number($('#water-reminder').value);personal.nextWater=prefs.waterMinutes?Date.now()+prefs.waterMinutes*60000:0;savePrefs();savePersonal();toast('Lembrete atualizado. Funciona com o site aberto.');};
-$('#mood-reminder').checked=!!prefs.moodReminder;$('#mood-reminder').onchange=()=>{prefs.moodReminder=$('#mood-reminder').checked;savePrefs();};
+const waterReminder=$('#water-reminder'), moodReminder=$('#mood-reminder');
+waterReminder.value=String(prefs.waterMinutes||0);
+waterReminder.onchange=()=>{
+ const previous=prefs.waterMinutes||0, previousTime=personal.nextWater;
+ const selected=Number(waterReminder.value), owner=me;
+ const update=(minutes,time)=>{
+  prefs.waterMinutes=minutes;
+  personal.nextWater=time;
+  waterReminder.value=String(minutes);
+  savePrefs();
+  savePersonal();
+ };
+ update(selected,selected?Date.now()+selected*60000:0);
+ if(!selected && previous) {
+  toast('Lembrete de água desligado.', ()=>{
+   if(me!==owner || prefs.waterMinutes) return;
+   update(previous,previousTime>Date.now()?previousTime:Date.now()+previous*60000);
+   toast('Lembrete de água reposto.');
+  });
+ } else toast('Lembrete atualizado. Funciona com o site aberto.');
+};
+moodReminder.checked=!!prefs.moodReminder;
+moodReminder.onchange=()=>{
+ prefs.moodReminder=moodReminder.checked;
+ savePrefs();
+ const owner=me;
+ if(!prefs.moodReminder) toast('Lembrete de check-in desligado.', ()=>{
+  if(me!==owner || prefs.moodReminder) return;
+  prefs.moodReminder=moodReminder.checked=true;
+  savePrefs();
+  toast('Lembrete de check-in reposto.');
+ });
+};
 async function notify(text,inApp=true,system=true){if(['dormir','sesta'].includes(effectiveStatus(data.members[me])))return;if(inApp)toast(text);if(system&&'Notification' in window && Notification.permission==='granted'){try{const reg=await navigator.serviceWorker?.ready;if(reg)await reg.showNotification('Sully',{body:text,icon:'./icon.svg',tag:'sully-gentle'});else new Notification('Sully',{body:text});}catch{/* The in-app toast remains available. */}}}
 function touchesMuted(){return ['dormir','sesta'].includes(effectiveStatus(data.members[me]));}
 function resetTouches(){touchEditing=false;touchInbox.reset();if($('#partner-alert').open)$('#partner-alert').close();}
@@ -357,7 +437,7 @@ document.addEventListener('visibilitychange',syncLocationUI);
 window.sullyReady=true;$('#boot-loader').hidden=true;updateDate();loadMood();render();
 if(cloudConfig.enabled){
  data={members:{},profiles:{},locations:[],events:[],moods:[]};$('#demo-switch').hidden=true;$('#clear-local').hidden=true;$('#login-button').hidden=false;$('#trusted').checked=localStorage.getItem('sully.trusted')==='yes';$('#account-description').textContent='Cada pessoa tem a sua conta e o seu perfil.';$('#cloud-title').textContent='O nosso lugar.';$('#cloud-description').textContent='Cria a tua conta e liga-te ao teu par por convite. As permissões são individuais. Ativa as notificações em cada telemóvel, no Perfil.';
- const finishConnecting=beginLoading('A ligar à Sully…');try{const {connectCloud}=await import('./cloud.js?rev=shared-alerts');cloud=await connectCloud({onAuth(uid){resetTouches();if(me)stashDraft();failedEvents.clear();chatRows.clear();chatSignature='';hasOlder=false;moodDrafts.clear();me=uid;setUnread(false);currentPair=null;data={members:{},profiles:{},locations:[],events:[],moods:[]};eventCursor.reset();personal=read(localStateKey(),{});$('#entry').hidden=!!uid;$('#workspace').hidden=!uid;$('#logout-button').disabled=false;$('#logout-button').hidden=!uid;$('#login-button').hidden=!!uid;loadMood();render();showPage(uid&&pendingInvite?'settings':'home');pageScroll.clear();window.scrollTo(0,0);},onPair(pair){currentPair=pair;render();},onData(collection,rows,metadata={}){if(collection==='members'||collection==='profiles')data[collection]=Object.fromEntries(rows.map(r=>[r.id,r]));else data[collection]=rows;if(collection==='events'){hasOlder=metadata.hasMore===true;if(metadata.history)eventCursor.consume(rows,me,{baseline:true});else for(const row of eventCursor.consume(rows,me,metadata))receivePartnerEvent(row);}render();},onActivity(event){if(!me||event.from===me||touchesMuted())return;toast(nameOf(event.from)+': '+(noticeText[event.type]||'Há novidades.').replace('O teu par ',''));},onError(error){toast(friendlyError(error));setConnection('Problema na ligação · verifica o Perfil');}});syncLocationUI();updatePushSession(true);push.refresh();}catch(error){toast(friendlyError(error));$('#entry-setup').hidden=false;$('#entry-setup').textContent='Não foi possível ligar ao serviço de contas. Tenta recarregar.';setConnection('Não foi possível ligar ao serviço · tenta recarregar');}finally{finishConnecting();}
+ const finishConnecting=beginLoading('A ligar à Sully…');try{const {connectCloud}=await import('./cloud.js?rev=shared-alerts');cloud=await connectCloud({onAuth(uid){resetTouches();if(me)stashDraft();failedEvents.clear();chatRows.clear();chatSignature='';hasOlder=false;moodDrafts.clear();pendingMoods.clear();failedMoods.clear();me=uid;setUnread(false);currentPair=null;data={members:{},profiles:{},locations:[],events:[],moods:[]};eventCursor.reset();personal=read(localStateKey(),{});$('#entry').hidden=!!uid;$('#workspace').hidden=!uid;$('#logout-button').disabled=false;$('#logout-button').hidden=!uid;$('#login-button').hidden=!!uid;loadMood();render();showPage(uid&&pendingInvite?'settings':'home');pageScroll.clear();window.scrollTo(0,0);},onPair(pair){currentPair=pair;render();},onData(collection,rows,metadata={}){if(collection==='members'||collection==='profiles')data[collection]=Object.fromEntries(rows.map(r=>[r.id,r]));else data[collection]=rows;if(collection==='events'){hasOlder=metadata.hasMore===true;if(metadata.history)eventCursor.consume(rows,me,{baseline:true});else for(const row of eventCursor.consume(rows,me,metadata))receivePartnerEvent(row);}render();},onActivity(event){if(!me||event.from===me||touchesMuted())return;toast(nameOf(event.from)+': '+(noticeText[event.type]||'Há novidades.').replace('O teu par ',''));},onError(error){toast(friendlyError(error));setConnection('Problema na ligação · verifica o Perfil');}});syncLocationUI();updatePushSession(true);push.refresh();}catch(error){toast(friendlyError(error));$('#entry-setup').hidden=false;$('#entry-setup').textContent='Não foi possível ligar ao serviço de contas. Tenta recarregar.';setConnection('Não foi possível ligar ao serviço · tenta recarregar');}finally{finishConnecting();}
 }
 
 // O teclado virtual pode reduzir a área visível no Safari e no Chrome móvel.

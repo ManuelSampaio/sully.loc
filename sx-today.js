@@ -186,7 +186,7 @@ export function configureToday({setStatus}) {
   q('#settings-menu').append(settingsConnection);
 
   return {
-    render({status, until, period, checkIn:record, ownStatus}) {
+    render({status, until, period, checkIn:record, checkInFailed, ownStatus}) {
       if (stateValue.textContent !== ownStatus) stateValue.textContent = ownStatus;
       stateTrigger.setAttribute('aria-label', 'O meu estado · ' + ownStatus + ' · alterar');
       const copy = stateCopy[status] || '';
@@ -214,7 +214,7 @@ export function configureToday({setStatus}) {
       }
       if (completed) {
         const label = MOODS.find(([id]) => id === record.mood)?.[2] || record.mood;
-        checkIn.textContent = `Partilhaste: ${label} · ${calendarPeriod[period]}`;
+        checkIn.textContent = `${record.pending ? "A sincronizar" : checkInFailed ? "Tentar enviar novamente" : "Check-in guardado"} · ${label} · ${calendarPeriod[period]}`;
       }
     }
   };

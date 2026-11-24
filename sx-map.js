@@ -26,8 +26,8 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false, detaile
 let assets;
 function globeAssets() {
   assets ||= Promise.all([
-    import('./sx-globe.js?rev=mapa-costeiro'),
-    fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
+    import('./sx-globe.js?rev=costa-checkin'),
+    fetch('./sx-globe-land.json?rev=costa-en100').then(response => {
       if (!response.ok) throw new Error('Mapa indisponível');
       return response.json();
     })
@@ -89,7 +89,7 @@ export function createMapBackdrop(meter) {
     const matchedRoad = hasPair && roadBetween(latest.own, latest.other);
     credit.hidden = roadDistance.hidden = !matchedRoad || !road;
     if (!roadDistance.hidden) {
-      const label = `${roadKmLabel(road)} por estrada`;
+      const label = `${roadKmLabel(road)} por estrada · EN100`;
       if (roadDistance.textContent !== label) roadDistance.textContent = label;
     }
     if (!latest) {
@@ -101,7 +101,7 @@ export function createMapBackdrop(meter) {
     if (hasPair) {
       introStarted = true;
       globe.show(latest.own, latest.other);
-      globe.setRoadRoute(matchedRoad ? road?.coordinates : undefined);
+      globe.setRoadRoute(matchedRoad ? road?.coordinates ?? null : undefined);
       if (!details && !loadingDetails) {
         loadingDetails = true;
         mapDetails().then(data => {
@@ -151,7 +151,8 @@ export function createMapDialog(refreshOwn) {
     <p class="sx-map-measure" hidden>Distância em linha reta</p>
     <p class="sx-map-road-summary" aria-live="polite" hidden>
       <strong></strong>
-      <span>Por estrada · Luanda ↔ Benguela</span>
+      <span>por estrada · EN100 · ≈ 8 h 12 min de carro</span>
+      <small>Luanda ↔ Benguela · ≈ 419 km em linha reta entre as cidades</small>
     </p>
     <div class="sx-map-skeleton" aria-hidden="true" hidden></div>
     <div class="sx-map-stage" hidden>
@@ -326,7 +327,7 @@ export function createMapDialog(refreshOwn) {
     }
     setDistance(distanceLabel);
     globe.show(own, other);
-    globe.setRoadRoute(activeRoad?.coordinates);
+    globe.setRoadRoute(matchedRoad ? activeRoad?.coordinates ?? null : undefined);
   }
 
   dialog.addEventListener('close', () => {

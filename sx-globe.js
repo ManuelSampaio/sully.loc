@@ -115,7 +115,7 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
       const projectedRoad = roadLine ? path({type:'LineString', coordinates:roadLine}) : '';
       roadPath.setAttribute('d', projectedRoad || '');
       roadPath.toggleAttribute('hidden', !projectedRoad);
-      if (roadLine) {
+      if (roadLine !== undefined) {
         route.setAttribute('hidden', '');
         return;
       }
