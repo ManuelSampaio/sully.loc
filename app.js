@@ -8,7 +8,7 @@ import { applyTheme } from './theme.js';
 import { renderSky, skyState } from './sky.js';
 import { icon, mountIcons } from './icons.js?rev=period-moods';
 import { MOODS, MOOD_PERIODS, moodsForPeriod, QUICK, dayKey, period, effectiveStatus, statusExpiry, STATUS_LIFETIME, waterAdd, validEvent, isDrawing } from './core.js?rev=home-focus';
-import { configureLocation } from './sx-location.js?rev=costa-checkin';
+import { configureLocation } from './sx-location.js?rev=rota-terrestre';
 import { configureToday } from './sx-today.js?rev=costa-checkin';
 import { cloudConfig } from './config.js';
 const $ = s => document.querySelector(s);

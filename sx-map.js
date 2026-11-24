@@ -1,23 +1,17 @@
-function globeMarkup(gradientId, styleClass, viewBox, showRoute = false, detailed = false) {
-  const routeMask = gradientId + '-route';
-  const trace = showRoute ? `<mask id="${routeMask}" maskUnits="userSpaceOnUse" x="90" y="0" width="460" height="398">
-          <path class="sx-map-trace" pathLength="1" fill="none" stroke="white" stroke-width="10"/>
-        </mask>` : '';
+function globeMarkup(gradientId, styleClass, viewBox) {
   return `<svg viewBox="${viewBox}" class="${styleClass}" aria-hidden="true" hidden>
       <defs>
         <radialGradient id="${gradientId}" cx="36%" cy="28%" r="74%">
           <stop stop-color="var(--sx-map-water-light, #a3dce8)"/><stop offset="1" stop-color="var(--sx-map-water-dark, #78c4d9)"/>
         </radialGradient>
-        ${trace}
       </defs>
       <path class="sx-globe-water" fill="url(#${gradientId})"></path>
       <path class="sx-globe-grid"></path>
       <path class="sx-map-land" fill-rule="evenodd"></path>
-      ${detailed ? `<path class="sx-map-borders" aria-hidden="true"/>
+      <path class="sx-map-borders" aria-hidden="true"/>
         <path class="sx-map-roads" aria-hidden="true"/>
         <path class="sx-map-road-route" aria-hidden="true" hidden/>
-        <g class="sx-map-cities" aria-hidden="true">${'<text hidden/>'.repeat(7)}</g>` : ''}
-      ${showRoute ? `<path class="sx-map-connection" mask="url(#${routeMask})" fill="none" hidden/>` : ''}
+        <g class="sx-map-cities" aria-hidden="true">${'<text hidden/>'.repeat(7)}</g>
       <g class="sx-map-dot sx-map-you" hidden><circle r="8"/></g>
       <g class="sx-map-dot sx-map-partner" hidden><circle r="8"/></g>
     </svg>`;
@@ -26,7 +20,7 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false, detaile
 let assets;
 function globeAssets() {
   assets ||= Promise.all([
-    import('./sx-globe.js?rev=costa-checkin'),
+    import('./sx-globe.js?rev=rota-terrestre'),
     fetch('./sx-globe-land.json?rev=costa-en100').then(response => {
       if (!response.ok) throw new Error('Mapa indisponível');
       return response.json();
@@ -53,8 +47,11 @@ function mapRoadRoute() {
   return coastalRoute;
 }
 function roadBetween(a, b) {
-  const nearby = (place, name, lng, lat) => place.cidade?.trim().toLowerCase() === name
-    && Math.hypot(place.lngE2 / 100 - lng, place.latE2 / 100 - lat) < .18;
+  const nearby = (place, name, lng, lat) => {
+    const distance = Math.hypot(place.lngE2 / 100 - lng, place.latE2 / 100 - lat);
+    // The shown trip is city centre to city centre. Shared positions may be in the outskirts.
+    return distance <= .29 || (distance <= .65 && place.cidade?.trim().toLowerCase() === name);
+  };
   const luanda = place => nearby(place, 'luanda', 13.23, -8.84);
   const benguela = place => nearby(place, 'benguela', 13.41, -12.58);
   return (luanda(a) && benguela(b)) || (luanda(b) && benguela(a));
@@ -65,7 +62,7 @@ function roadKmLabel(road) {
 }
 
 export function createMapBackdrop(meter) {
-  meter.insertAdjacentHTML('afterbegin', globeMarkup('sx-backdrop-ocean', 'sx-map-backdrop', '166 22 308 352', true, true));
+  meter.insertAdjacentHTML('afterbegin', globeMarkup('sx-backdrop-ocean', 'sx-map-backdrop', '166 22 308 352'));
   const image = meter.querySelector('.sx-map-backdrop');
   image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
   const credit = document.createElement('a');
@@ -101,7 +98,7 @@ export function createMapBackdrop(meter) {
     if (hasPair) {
       introStarted = true;
       globe.show(latest.own, latest.other);
-      globe.setRoadRoute(matchedRoad ? road?.coordinates ?? null : undefined);
+      globe.setRoadRoute(matchedRoad ? road?.coordinates : undefined);
       if (!details && !loadingDetails) {
         loadingDetails = true;
         mapDetails().then(data => {
@@ -156,7 +153,7 @@ export function createMapDialog(refreshOwn) {
     </p>
     <div class="sx-map-skeleton" aria-hidden="true" hidden></div>
     <div class="sx-map-stage" hidden>
-      ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380', true, true)}
+      ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380')}
       <div class="sx-map-controls" role="group" aria-label="Controlos do globo">
         <button type="button" aria-label="Reduzir" class="sx-map-out">−</button>
         <button type="button" aria-label="Ampliar" class="sx-map-in">+</button>
@@ -280,7 +277,7 @@ export function createMapDialog(refreshOwn) {
       road = await mapRoadRoute();
       if (latest) render(latest);
     } catch {
-      // The existing straight-line view remains available if the route cannot load.
+      // Keep the location markers and distance available if the route cannot load.
     } finally {
       loadingRoute = false;
     }
@@ -327,7 +324,7 @@ export function createMapDialog(refreshOwn) {
     }
     setDistance(distanceLabel);
     globe.show(own, other);
-    globe.setRoadRoute(matchedRoad ? activeRoad?.coordinates ?? null : undefined);
+    globe.setRoadRoute(matchedRoad ? activeRoad?.coordinates : undefined);
   }
 
   dialog.addEventListener('close', () => {

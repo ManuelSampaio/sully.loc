@@ -192,16 +192,6 @@ dialog.sx-map-sheet {
   fill: none; stroke: #274fae; stroke-width: 5.5; stroke-linecap: round; stroke-linejoin: round;
   filter: drop-shadow(0 0 1.4px #fff);
 }
-.sx-map-connection {
-  stroke: #44677e; stroke-width: 2.75; stroke-dasharray: 5 5; stroke-linecap: round;
-  filter: drop-shadow(0 0 1px #f7fbfc);
-}
-@media (prefers-reduced-motion: no-preference) {
-  :is(.sx-map-preview, .sx-map-backdrop):has(.sx-map-connection:not([hidden])) .sx-map-trace {
-    stroke-dasharray: 1; animation: sx-draw-map-route .55s ease-out both;
-  }
-  @keyframes sx-draw-map-route { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-}
 .sx-map-you { --sx-map-point: #b57c23; }
 .sx-map-partner { --sx-map-point: #9474bf; }
 .sx-map-preview .sx-map-you { --sx-map-point: #ffd391; }
@@ -241,7 +231,6 @@ dialog.sx-map-sheet {
 :root[data-theme="dark"] .sx-map-borders { stroke: #b2b99c; }
 :root[data-theme="dark"] .sx-map-cities { fill: #fcf5df; stroke: #30473e; }
 :root[data-theme="dark"] .sx-map-road-route { stroke: #76bde5; filter: drop-shadow(0 0 1px #163345); }
-:root[data-theme="dark"] .sx-map-connection { stroke: #e0ded0; filter: none; }
 
 #page-home .page-heading {
   display: grid; grid-template-columns: minmax(0,1fr) auto 44px;

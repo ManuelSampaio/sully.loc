@@ -73,8 +73,6 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
   const water = svg.querySelector('.sx-globe-water');
   const graticule = svg.querySelector('.sx-globe-grid');
   const landPath = svg.querySelector('.sx-map-land');
-  const route = svg.querySelector('.sx-map-connection');
-  const trace = svg.querySelector('.sx-map-trace');
   const roadPath = svg.querySelector('.sx-map-road-route');
   const dots = svg.querySelectorAll('.sx-map-dot');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -83,10 +81,7 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
   let cityNames = [], roadLine;
 
   function hideRoute() {
-    roadPath?.setAttribute('hidden', '');
-    if (route) {
-      route.setAttribute('hidden', '');
-    }
+    roadPath.setAttribute('hidden', '');
     dots.forEach(dot => dot.setAttribute('hidden', ''));
   }
   function paint(camera, zoom, locations) {
@@ -110,28 +105,9 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
       dots[index].setAttribute('transform', `translate(${point.join(' ')})`);
       dots[index].toggleAttribute('hidden', !visible[index]);
     }
-    if (!route) return;
-    if (roadPath) {
-      const projectedRoad = roadLine ? path({type:'LineString', coordinates:roadLine}) : '';
-      roadPath.setAttribute('d', projectedRoad || '');
-      roadPath.toggleAttribute('hidden', !projectedRoad);
-      if (roadLine !== undefined) {
-        route.setAttribute('hidden', '');
-        return;
-      }
-    }
-    const inside = ([x, y]) => x >= 100 && x <= 540 && y >= 8 && y <= 388;
-    if (!visible.every(Boolean) || ![a, b].some(inside)) {
-      route.setAttribute('hidden', '');
-      return;
-    }
-    const dx = b[0] - a[0], dy = b[1] - a[1];
-    const bend = Math.min(.34, 42 / Math.hypot(dx, dy));
-    const control = [(a[0] + b[0]) / 2 - dy * bend, (a[1] + b[1]) / 2 + dx * bend];
-    const curve = `M${a.join(' ')} Q${control.join(' ')} ${b.join(' ')}`;
-    route.setAttribute('d', curve);
-    trace.setAttribute('d', curve);
-    route.removeAttribute('hidden');
+    const projectedRoad = roadLine ? path({type:'LineString', coordinates:roadLine}) : '';
+    roadPath.setAttribute('d', projectedRoad || '');
+    roadPath.toggleAttribute('hidden', !projectedRoad);
   }
   function cancelFlight() {
     if (frame !== undefined) cancelAnimationFrame(frame);

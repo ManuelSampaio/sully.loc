@@ -1,4 +1,4 @@
-import { createMapBackdrop, createMapDialog } from './sx-map.js?rev=costa-checkin';
+import { createMapBackdrop, createMapDialog } from './sx-map.js?rev=rota-terrestre';
 
 const day = 86400000;
 const rad = Math.PI / 18000; // Coordinates are stored in hundredths of a degree.
