@@ -20,7 +20,7 @@ export function globeCenter(a,b) {
   return [Math.atan2(y,x)/rad,Math.atan2(z,Math.hypot(x,y))/rad];
 }
 
-export function createGlobe(svg, land, { regional = false } = {}) {
+export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {}) {
   const projection = geoOrthographic().translate([320,198]).scale(worldScale).clipAngle(90).precision(.8);
   const path = geoPath(projection);
   const water = svg.querySelector('.sx-globe-water');
@@ -90,7 +90,7 @@ export function createGlobe(svg, land, { regional = false } = {}) {
     const to = globeCenter(...points);
     const separation = Math.sin(geoInterpolate(...points).distance / 2);
     // Leave room for both markers even when the locations are on opposite sides of Earth.
-    const zoom = regional ? clamp(137 / separation, worldScale, 3900) : worldScale;
+    const zoom = regional ? clamp(fitRadius / separation, worldScale, 3900) : worldScale;
     if (!regional || motion.matches) {
       paint(to, zoom, points);
       return;

@@ -169,7 +169,7 @@ dialog.sx-map-sheet {
   filter: drop-shadow(0 0 2px #18293b);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .sx-map-preview:has(.sx-map-connection:not([hidden])) .sx-map-trace {
+  :is(.sx-map-preview, .sx-map-backdrop):has(.sx-map-connection:not([hidden])) .sx-map-trace {
     stroke-dasharray: 1; animation: sx-draw-map-route .55s ease-out both;
   }
   @keyframes sx-draw-map-route { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
@@ -198,6 +198,7 @@ dialog.sx-map-sheet {
   mask-image: linear-gradient(to right, transparent 0, #000 48%);
 }
 #page-home .sx-map-backdrop :is(.sx-globe-water, .sx-globe-grid, .sx-map-land) { opacity: .56; }
+#page-home .sx-map-backdrop .sx-map-connection { stroke: #ffd391; }
 :root[data-theme="dark"] #page-home .sx-map-backdrop :is(.sx-globe-water, .sx-globe-grid, .sx-map-land) { opacity: .46; }
 
 #page-home .page-heading {

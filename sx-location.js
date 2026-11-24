@@ -1,4 +1,4 @@
-import { createMapBackdrop, createMapDialog } from './sx-map.js?rev=globo-interativo';
+import { createMapBackdrop, createMapDialog } from './sx-map.js?rev=globo-automatico';
 
 const day = 86400000;
 const rad = Math.PI / 18000; // Coordinates are stored in hundredths of a degree.

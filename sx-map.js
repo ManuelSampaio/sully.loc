@@ -22,7 +22,7 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false) {
 let assets;
 function globeAssets() {
   assets ||= Promise.all([
-    import('./sx-globe.js?rev=globo-interativo'),
+    import('./sx-globe.js?rev=globo-automatico'),
     fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
       if (!response.ok) throw new Error('Mapa indisponível');
       return response.json();
@@ -32,15 +32,31 @@ function globeAssets() {
 }
 
 export function createMapBackdrop(meter) {
-  meter.insertAdjacentHTML('afterbegin',globeMarkup('sx-backdrop-ocean','sx-map-backdrop','144 22 352 352'));
+  meter.insertAdjacentHTML('afterbegin', globeMarkup('sx-backdrop-ocean', 'sx-map-backdrop', '144 22 352 352', true));
   const image = meter.querySelector('.sx-map-backdrop');
-  let globe, loading, latest;
+  let globe, loading, latest, introStarted = false;
+  let visible = typeof IntersectionObserver !== 'function';
   function draw() {
-    image.toggleAttribute('hidden',!latest || !globe);
-    if (!latest) { globe?.stop(); return; }
+    image.toggleAttribute('hidden', !latest || !globe);
+    if (!latest) {
+      introStarted = false;
+      globe?.stop();
+      return;
+    }
     if (!globe) return;
-    if (latest.current) globe.show(latest.own, latest.other);
-    else globe.showIdle();
+    if (latest.current && (visible || introStarted)) {
+      introStarted = true;
+      globe.show(latest.own, latest.other);
+    } else {
+      globe.showIdle();
+    }
+  }
+  if (!visible) {
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.intersectionRatio >= .35;
+      if (visible) draw();
+    }, { threshold: .35 });
+    observer.observe(meter);
   }
   return function render(state) {
     latest = state;
@@ -48,7 +64,7 @@ export function createMapBackdrop(meter) {
     if (!state || globe || loading) return;
     loading = true;
     globeAssets().then(([{createGlobe},land]) => {
-      globe = createGlobe(image,land);
+      globe = createGlobe(image, land, { regional: true, fitRadius: 87 });
       draw();
     }).catch(() => {
       // The card remains fully usable if its decorative background cannot load.
