@@ -214,7 +214,7 @@ body.settings-open .day-sky,body.settings-open .mode-banner{display:none}
 #page-home #partner-note:empty{display:none}
 #page-home #partner-note{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 #page-home #send-heart{grid-area:1/3/3/4}
-#page-home #home-chat,#page-home #home-link{grid-column:2/-1;justify-self:start;margin-top:8px}
+#page-home #home-link{grid-column:2/-1;justify-self:start;margin-top:8px}
 #page-home .quick-card{grid-column:1/-1}
 #page-home #quick-actions,#page-home #more-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 #page-home .more-touches summary{font-weight:500;margin:4px 0;color:var(--accent)}

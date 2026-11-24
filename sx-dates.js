@@ -29,16 +29,10 @@ const countdown = days => days === 0 ? 'Hoje' : days === 1 ? 'Falta 1 dia'
 const displayDate = new Intl.DateTimeFormat('pt-PT',{year:'numeric',month:'long',day:'numeric',timeZone:'UTC'});
 
 export function configureDates() {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'secondary sx-date-chip';
-  button.hidden = true;
-  button.textContent = 'Datas';
-  button.setAttribute('aria-haspopup','dialog');
   const dates = document.querySelector('#page-home .sx-reunion');
-  const quick = document.querySelector('#page-home .quick-card');
-  quick.after(dates);
-  dates.append(document.querySelector('#home-chat'),button);
+  const button = document.querySelector('#page-home .sx-reunion-label');
+  const reunionValue = button.querySelector('strong');
+  const localForm = dates.querySelector('form');
   const dialog = document.createElement('dialog');
   dialog.id = 'sx-dates';
   dialog.className = 'sx-sheet';
@@ -63,9 +57,6 @@ export function configureDates() {
   const form = dialog.querySelector('form');
   const deletion = dialog.querySelector('.sx-delete-date');
   const migrate = dialog.querySelector('.sx-migrate-date');
-  const editLocal = dates.querySelector('.sx-date-edit');
-  const reunionLabel = document.querySelector('#page-home .sx-reunion-label');
-  const reunionValue = reunionLabel.querySelector('strong');
   let api, room, owner, stop, rows = [], editId, deleteId, busy = false, drawn;
   function localReunion() {
     try { return localStorage.getItem('sully.ui.reencontro') || ''; } catch { return ''; }
@@ -91,27 +82,17 @@ export function configureDates() {
     const ordered = rows.map(row => ({...row, next:occurrence(row,today)})).filter(row => row.next);
     const upcoming = ordered.filter(row => row.next.days >= 0).sort((a,b) => a.next.days - b.next.days);
     const past = ordered.filter(row => row.next.days < 0).sort((a,b) => b.next.days - a.next.days);
-    const next = upcoming[0];
     const reunion = upcoming.find(row => row.tipo === 'encontro');
     const migration = localReunion();
-    button.hidden = !room;
-    const nextDate = next ? `${next.titulo} · ${next.next.days === 0 ? 'hoje' : `${next.next.days} d`}` : '';
-    const summary = next && reunion !== next ? 'Datas · ' + nextDate : 'Datas';
-    if (button.textContent !== summary) button.textContent = summary;
-    const hadReunion = dates.classList.contains('sx-shared-reunion');
-    dates.classList.toggle('sx-shared-reunion',Boolean(reunion));
-    if (reunion) {
-      reunionLabel.hidden = false;
-      reunionValue.textContent = reunion.next.days === 0 ? 'Hoje' : `${reunion.next.days} ${reunion.next.days === 1 ? 'dia' : 'dias'}`;
+    if (room) {
+      button.setAttribute('aria-haspopup', 'dialog');
+      localForm.hidden = true;
+    } else {
+      button.removeAttribute('aria-haspopup');
     }
-    if (!reunion && hadReunion) {
-      const remaining = (calendarDay(migration) - calendarDay(today));
-      reunionLabel.hidden = !(remaining >= 0);
-      reunionValue.textContent = remaining === 0 ? 'Hoje' : remaining === 1 ? '1 dia' : `${remaining} dias`;
-    }
-    const localForm = dates.querySelector('form');
-    if (room) localForm.hidden = true;
-    editLocal.hidden = Boolean(room) || !localForm.hidden;
+    const remaining = reunion?.next.days ?? (calendarDay(migration) - calendarDay(today));
+    const label = !(remaining >= 0) ? 'Marcar' : remaining === 0 ? 'Hoje' : remaining === 1 ? '1 dia' : `${remaining} dias`;
+    if (reunionValue.textContent !== label) reunionValue.textContent = label;
     migrate.hidden = !Number.isFinite(calendarDay(migration)) || rows.some(row => row.tipo === 'encontro' && row.data === migration);
     const signature = JSON.stringify([today, ...[...upcoming,...past].map(({id,tipo,titulo,data,anual})=>[id,tipo,titulo,data,anual])]);
     if (drawn === signature) return;
@@ -197,7 +178,11 @@ export function configureDates() {
       deletion.querySelector('button').disabled = false;
     }
   }
-  button.onclick = () => { draw(); dialog.showModal(); };
+  button.addEventListener('click', () => {
+    if (!room) return;
+    draw();
+    dialog.showModal();
+  });
   dialog.querySelector('.sx-close-dates').onclick = () => dialog.close();
   dialog.querySelector('.sx-add-date').onclick = () => editor();
   dialog.querySelector('.sx-cancel-date').onclick = () => hideEditor(true);

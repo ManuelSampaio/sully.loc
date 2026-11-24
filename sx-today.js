@@ -123,7 +123,7 @@ export function configureToday({setStatus}) {
   const more = q('.more-touches');
   const moreTrigger = document.createElement('button');
   moreTrigger.type = 'button';
-  moreTrigger.className = 'secondary sx-more';
+  moreTrigger.className = 'text-button sx-more';
   moreTrigger.setAttribute('aria-haspopup', 'dialog');
   moreTrigger.textContent = 'Mais toques';
   more.before(moreTrigger);
@@ -137,8 +137,7 @@ export function configureToday({setStatus}) {
   more.addEventListener('click', event => {
     if (event.target.closest('button')) touchSheet.close();
   }, {capture:true});
-  const chat = q('#home-chat');
-  partner.insertBefore(quick, chat);
+  partner.insertBefore(quick, q('.sx-reunion'));
   const heart = q('#send-heart');
   heart.className = 'secondary sx-sheet-heart';
   touchSheet.append(heart);
@@ -190,7 +189,6 @@ export function configureToday({setStatus}) {
     render({status, until, period, checkIn:record, ownStatus}) {
       if (stateValue.textContent !== ownStatus) stateValue.textContent = ownStatus;
       stateTrigger.setAttribute('aria-label', 'O meu estado · ' + ownStatus + ' · alterar');
-      chat.classList.toggle('sx-chat-highlight', status === 'disponivel');
       const copy = stateCopy[status] || '';
       context.textContent = copy;
       context.hidden = !copy;

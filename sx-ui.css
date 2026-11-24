@@ -93,12 +93,12 @@
 #page-home .sx-partner-empty, #page-home .sx-shared-at {
   grid-column: 1/-1; margin: 0; color: var(--muted); font-size: 14px;
 }
-#page-home #send-heart, #page-home #home-chat, #page-home #home-link {
+#page-home #send-heart, #page-home #home-link {
   grid-area: auto; min-height: 44px; justify-self: stretch; margin: 0;
   padding-inline: 8px; font-size: 14px;
 }
 #page-home #send-heart { grid-column: 1/-1; justify-self: start; }
-#page-home #home-chat, #page-home #home-link { grid-column: 1/-1; justify-self: start; }
+#page-home #home-link { grid-column: 1/-1; justify-self: start; }
 #page-home .sx-distance { order: 1; min-width: 0; text-align: center; color: var(--muted); font-size: 14px; }
 #page-home .quick-card { order: 2; }
 #page-home .mood-card { order: 3; }

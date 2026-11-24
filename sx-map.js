@@ -58,7 +58,7 @@ export function createMapDialog(refreshOwn) {
   dialog.innerHTML = `<div class="sx-sheet-heading"><h2 id="sx-map-title">Globo de nós dois</h2>
     <button type="button" class="secondary sx-map-close">Fechar</button></div>
     <p class="sx-map-distance" role="status"></p>
-    ${globeMarkup('sx-globe-ocean','sx-map-preview','0 0 640 398')}
+    ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380')}
     <ul class="sx-map-legend" aria-label="Posições"></ul>
     <button type="button" class="secondary sx-map-refresh">Atualizar a minha localização</button>
     <p class="sx-map-feedback" role="status"></p>

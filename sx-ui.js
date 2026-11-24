@@ -98,14 +98,13 @@
   partner.insertBefore(distance, sendHeart);
   const reunion = document.createElement('div');
   reunion.className = 'sx-reunion';
-  reunion.innerHTML = `<p class="sx-reunion-label" hidden><span>Próximo encontro</span><strong></strong></p>
-    <button type="button" class="text-button sx-date-edit">Define quando se vão ver</button>
+  reunion.innerHTML = `<button type="button" class="sx-reunion-label" hidden><span>Próximo encontro</span><strong>Marcar</strong></button>
     <form hidden><label for="sx-reunion-date">Data do reencontro</label>
       <input id="sx-reunion-date" type="date" required>
       <button type="submit" class="secondary">Guardar</button>
       <button type="button" class="text-button sx-date-cancel">Cancelar</button>
     </form>`;
-  partner.insertBefore(reunion, partner.querySelector('#home-chat'));
+  partner.insertBefore(reunion, link);
   const partnerClock = document.createElement('p');
   partnerClock.className = 'sx-partner-clock';
   partnerClock.hidden = true;
@@ -117,7 +116,6 @@
   }
   const dateForm = reunion.querySelector('form');
   const dateField = reunion.querySelector('input');
-  const dateEdit = reunion.querySelector('.sx-date-edit');
   const reunionLabel = reunion.querySelector('.sx-reunion-label');
   const reunionValue = reunionLabel.querySelector('strong');
   distance.after(reunionLabel);
@@ -126,10 +124,8 @@
     const todayNumber = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
     const saved = readLocal(reunionKey);
     const days = /^\d{4}-\d{2}-\d{2}$/.test(saved) ? (Date.parse(saved) - todayNumber) / 86400000 : NaN;
-    if (!reunion.classList.contains('sx-shared-reunion')) {
-      reunionLabel.hidden = !(days >= 0);
-      reunionValue.textContent = days === 0 ? 'Hoje' : days === 1 ? '1 dia' : `${days} dias`;
-      dateEdit.textContent = days >= 0 ? 'Alterar data' : 'Define quando se vão ver';
+    if (!reunionLabel.hasAttribute('aria-haspopup')) {
+      reunionValue.textContent = !(days >= 0) ? 'Marcar' : days === 0 ? 'Hoje' : days === 1 ? '1 dia' : `${days} dias`;
     }
     if (distance.querySelector('.sx-live-meter')) return;
     const timeZone = readLocal(timeZoneKey);
@@ -144,13 +140,12 @@
   }
   function closeDateForm() {
     dateForm.hidden = true;
-    dateEdit.hidden = false;
-    dateEdit.focus();
+    reunionLabel.focus();
   }
-  dateEdit.addEventListener('click', () => {
+  reunionLabel.addEventListener('click', () => {
+    if (reunionLabel.hasAttribute('aria-haspopup')) return;
     dateField.value = readLocal(reunionKey);
     dateField.setCustomValidity('');
-    dateEdit.hidden = true;
     dateForm.hidden = false;
     dateField.focus();
   });
@@ -198,6 +193,7 @@
     initial.textContent = Array.from(name.textContent.trim())[0]?.toLocaleUpperCase('pt-PT') || '';
     distance.hidden = !connected;
     reunion.hidden = !connected;
+    reunionLabel.hidden = !connected;
     updateRings();
     updateSharedTime();
     updateDistance();
