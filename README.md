@@ -93,4 +93,6 @@ O fundo de `sx-globe-land.json` usa [Natural Earth 1:110m Land](https://www.natu
 
 Ao abrir **Ver globo**, a Sully carrega `sx-map-roads.json` do mesmo site. Este ficheiro reúne fronteiras mundiais de Natural Earth 1:110m e estradas principais de Angola e arredores, simplificadas a partir de [Natural Earth 1:10m Roads v5.1.2](https://github.com/nvkelso/natural-earth-vector/tree/v5.1.2/10m_cultural). Os nomes das cidades são desenhados a partir da lista local. A distância indicada é em linha reta.
 
+O percurso Luanda–Benguela em `sx-route-luanda-benguela.json` é uma estimativa de centro a centro. A geometria foi calculada localmente a partir do [extrato de Angola da Geofabrik](https://download.geofabrik.de/africa/angola/), com dados de 23 de novembro de 2026 © [contribuidores do OpenStreetMap](https://www.openstreetmap.org/copyright), sob a [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). O ficheiro contém apenas geometria de estradas públicas e a distância aproximada do percurso.
+
 O globo usa a projeção ortográfica do D3 Geo. O módulo ESM de `vendor/d3-geo.js` foi preparado a partir de `d3-geo@3.1.1` e inclui os quatro exports usados. As licenças ficam em `vendor/d3-geo.LICENSE.txt`.

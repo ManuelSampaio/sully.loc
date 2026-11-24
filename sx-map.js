@@ -15,6 +15,7 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false, detaile
       <path class="sx-map-land" fill-rule="evenodd"></path>
       ${detailed ? `<path class="sx-map-borders" aria-hidden="true"/>
         <path class="sx-map-roads" aria-hidden="true"/>
+        <path class="sx-map-road-route" aria-hidden="true" hidden/>
         <g class="sx-map-cities" aria-hidden="true">${'<text hidden/>'.repeat(7)}</g>` : ''}
       ${showRoute ? `<path class="sx-map-connection" mask="url(#${routeMask})" fill="none" hidden/>` : ''}
       <g class="sx-map-dot sx-map-you" hidden><circle r="8"/></g>
@@ -25,7 +26,7 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false, detaile
 let assets;
 function globeAssets() {
   assets ||= Promise.all([
-    import('./sx-globe.js?rev=mapa-estradas'),
+    import('./sx-globe.js?rev=percurso-estrada'),
     fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
       if (!response.ok) throw new Error('Mapa indisponível');
       return response.json();
@@ -83,6 +84,10 @@ export function createMapDialog(refreshOwn) {
     <button type="button" class="secondary sx-map-close">Fechar</button></div>
     <p class="sx-map-distance" role="status"></p>
     <p class="sx-map-measure" hidden>Distância em linha reta</p>
+    <p class="sx-map-road-summary" aria-live="polite" hidden>
+      <strong></strong>
+      <span>Por estrada · Luanda ↔ Benguela</span>
+    </p>
     <div class="sx-map-stage" hidden>
       ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380', true, true)}
       <div class="sx-map-controls" role="group" aria-label="Controlos do globo">
@@ -92,6 +97,8 @@ export function createMapDialog(refreshOwn) {
       </div>
     </div>
     <ul class="sx-map-legend" aria-label="Posições"></ul>
+    <p class="sx-map-road-credit" hidden>Percurso entre os centros das cidades ·
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a></p>
     <p class="sx-map-source" hidden>Estradas principais de Angola e da região · Natural Earth</p>
     <button type="button" class="secondary sx-map-refresh">Atualizar a minha localização</button>
     <p class="sx-map-feedback" role="status"></p>
@@ -109,9 +116,12 @@ export function createMapDialog(refreshOwn) {
   const measure = q('.sx-map-measure');
   const legend = q('.sx-map-legend');
   const source = q('.sx-map-source');
+  const roadSummary = q('.sx-map-road-summary');
+  const roadCredit = q('.sx-map-road-credit');
   const refresh = q('.sx-map-refresh');
   const feedback = q('.sx-map-feedback');
   let globe, loading, failed = false, previousLegend, latest, detailStatus;
+  let coastalRoute, loadingRoute = false;
   const pointers = new Map();
   const zoomStep = 1.35;
   q('.sx-map-in').onclick = () => globe?.move(0, 0, zoomStep);
@@ -198,6 +208,30 @@ export function createMapDialog(refreshOwn) {
     }
   }
 
+  function nearby(place, name, [lng, lat]) {
+    return place.cidade?.trim().toLowerCase() === name
+      && Math.hypot(place.lngE2 / 100 - lng, place.latE2 / 100 - lat) < .18;
+  }
+  function roadBetween(a, b) {
+    const fromLuanda = place => nearby(place, 'luanda', [13.23, -8.84]);
+    const fromBenguela = place => nearby(place, 'benguela', [13.41, -12.58]);
+    return (fromLuanda(a) && fromBenguela(b)) || (fromLuanda(b) && fromBenguela(a));
+  }
+  async function loadRoadRoute() {
+    if (loadingRoute || coastalRoute) return;
+    loadingRoute = true;
+    try {
+      const response = await fetch('./sx-route-luanda-benguela.json?v=1');
+      if (!response.ok) return;
+      coastalRoute = await response.json();
+      if (latest) render(latest);
+    } catch {
+      // The existing straight-line view remains available if the route cannot load.
+    } finally {
+      loadingRoute = false;
+    }
+  }
+
   function setDistance(text) {
     if (distance.textContent !== text) distance.textContent = text;
   }
@@ -219,6 +253,15 @@ export function createMapDialog(refreshOwn) {
         legend.append(entry);
       }
     }
+    const matchedRoad = current && roadBetween(own, other);
+    const activeRoad = matchedRoad ? coastalRoute : undefined;
+    roadSummary.hidden = roadCredit.hidden = !activeRoad;
+    if (activeRoad) {
+      const label = `≈ ${Math.round(activeRoad.km / 10) * 10} km`;
+      const value = roadSummary.querySelector('strong');
+      if (value.textContent !== label) value.textContent = label;
+    }
+    if (matchedRoad && !activeRoad) loadRoadRoute();
     measure.hidden = !current;
     stage.hidden = !globe;
     fit.disabled = !current;
@@ -230,6 +273,7 @@ export function createMapDialog(refreshOwn) {
     }
     setDistance(distanceLabel);
     globe.show(own, other);
+    globe.setRoadRoute(activeRoad?.coordinates);
   }
 
   dialog.addEventListener('close', () => {

@@ -168,7 +168,17 @@ dialog.sx-map-sheet {
 .sx-map-borders { stroke: #3e665b; stroke-width: 1; opacity: .72; }
 .sx-map-roads { stroke: #fbf1d6; stroke-width: 1.15; opacity: .85; }
 .sx-map-cities { fill: #fdf9ee; stroke: #203b35; stroke-width: 2.8; paint-order: stroke; font-size: 12px; font-weight: 650; text-anchor: middle; }
-.sx-map-source { margin: 6px 0; color: var(--muted); font-size: 12px; }
+.sx-map-source, .sx-map-road-credit { margin: 6px 0; color: var(--muted); font-size: 12px; }
+.sx-map-road-summary {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 8px; margin: 0 0 10px;
+  padding: 7px 11px; border-radius: 10px; background: var(--selected, var(--bg));
+  color: var(--ink); font-size: 13px;
+}
+.sx-map-road-summary strong { color: var(--accent); font-size: 16px; }
+.sx-map-road-route {
+  fill: none; stroke: #1c8294; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 0 1px #fdf9ee);
+}
 .sx-map-connection {
   stroke: #ffdfa2; stroke-width: 2.75; stroke-dasharray: 5 5; stroke-linecap: round;
   filter: drop-shadow(0 0 2px #18293b);

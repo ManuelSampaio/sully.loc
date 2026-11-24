@@ -74,13 +74,15 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
   const landPath = svg.querySelector('.sx-map-land');
   const route = svg.querySelector('.sx-map-connection');
   const trace = svg.querySelector('.sx-map-trace');
+  const roadPath = svg.querySelector('.sx-map-road-route');
   const dots = svg.querySelectorAll('.sx-map-dot');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let center, scale = worldScale, target, frame, points;
   let idle = false, manual = false, renderDetails;
-  let cityNames = [];
+  let cityNames = [], roadLine;
 
   function hideRoute() {
+    roadPath?.setAttribute('hidden', '');
     if (route) {
       route.setAttribute('hidden', '');
     }
@@ -108,6 +110,15 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
       dots[index].toggleAttribute('hidden', !visible[index]);
     }
     if (!route) return;
+    if (roadPath) {
+      const projectedRoad = roadLine ? path({type:'LineString', coordinates:roadLine}) : '';
+      roadPath.setAttribute('d', projectedRoad || '');
+      roadPath.toggleAttribute('hidden', !projectedRoad);
+      if (roadLine) {
+        route.setAttribute('hidden', '');
+        return;
+      }
+    }
     const inside = ([x, y]) => x >= 100 && x <= 540 && y >= 8 && y <= 388;
     if (!visible.every(Boolean) || ![a, b].some(inside)) {
       route.setAttribute('hidden', '');
@@ -131,6 +142,7 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
     scale = worldScale;
     idle = manual = false;
     cityNames = [];
+    roadLine = undefined;
     hideRoute();
   }
   function focusPair() {
@@ -202,5 +214,10 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
     renderDetails = mapDetails(svg, data, projection, path);
     if (center) renderDetails(center, scale, cityNames);
   }
-  return {show, stop, showIdle, move, focusPair, setDetails};
+  function setRoadRoute(coordinates) {
+    if (roadLine === coordinates) return;
+    roadLine = coordinates;
+    if (center && points && frame === undefined) paint(center, scale, points);
+  }
+  return {show, stop, showIdle, move, focusPair, setDetails, setRoadRoute};
 }
