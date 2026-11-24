@@ -1,4 +1,4 @@
-import { createMapDialog } from './sx-map.js';
+import { createMapDialog } from './sx-map.js?rev=globo-v2';
 
 const day = 86400000;
 const rad = Math.PI / 18000; // Coordinates are stored in hundredths of a degree.
@@ -105,7 +105,7 @@ export function configureLocation(openLocationSettings) {
     routeText.hidden = km === undefined || !route;
     routeText.textContent = routeText.hidden ? '' : route;
     enableFromHome.hidden = !room || ownSharing !== false || !navigator.onLine;
-    mapButton.hidden = !room || ownSharing !== true;
+    mapButton.hidden = !room;
     const age = ms => ms >= day ? `${Math.floor(ms/day)} d` : ms >= 3600000
       ? `${Math.floor(ms/3600000)} h` : `${Math.max(1,Math.floor(ms/60000))} min`;
     ageText.textContent = partnerSharing && other
@@ -122,7 +122,7 @@ export function configureLocation(openLocationSettings) {
       return [label,place(position),freshness,movement].filter(Boolean).join(' · ');
     };
     map.render({current, distanceLabel, own, other, ownSharing,canUpdate:!document.hidden&&navigator.onLine,
-      descriptions:[describe('own','Tu',own,ownAge),describe('other','O teu par',other,otherAge)]});
+      descriptions:ownSharing ? [describe('own','Tu',own,ownAge),describe('other','O teu par',other,otherAge)] : []});
     const time = q('.sx-partner-clock');
     if (time) {
       time.hidden = true;

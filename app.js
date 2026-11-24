@@ -8,7 +8,7 @@ import { applyTheme } from './theme.js';
 import { renderSky, skyState } from './sky.js';
 import { icon, mountIcons } from './icons.js?rev=period-moods';
 import { MOODS, MOOD_PERIODS, moodsForPeriod, QUICK, dayKey, period, effectiveStatus, statusExpiry, STATUS_LIFETIME, waterAdd, validEvent, isDrawing } from './core.js?rev=home-focus';
-import { configureLocation } from './sx-location.js';
+import { configureLocation } from './sx-location.js?rev=globo-v2';
 import { configureToday } from './sx-today.js';
 import { cloudConfig } from './config.js';
 const $ = s => document.querySelector(s);
@@ -324,7 +324,24 @@ setInterval(()=>{updateDate();if(!me)return;const now=Date.now();if(prefs.waterM
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(me)render();updateDate();showNextTouch();if(cloudConfig.enabled)push.refresh();}});
 window.addEventListener('pageshow',updateDate);
 window.addEventListener('online',()=>{if(cloudConfig.enabled)push.refresh();reconnecting=true;setConnection(networkLabel());setTimeout(()=>{reconnecting=false;setConnection(networkLabel());},4000);});window.addEventListener('offline',()=>{reconnecting=false;setConnection(networkLabel());if(activeTasks.size)$('#loader-label').textContent='À espera de rede…';});window.addEventListener('storage',e=>{if(e.key==='sully.push.device.v1'&&cloudConfig.enabled)push.refresh();if(me&&e.key===localStateKey()){personal=read(localStateKey(),{});render();}if(!cloudConfig.enabled && e.key===KEY){const fresh=read(KEY,null);if(fresh?.members?.a&&fresh?.members?.b&&Array.isArray(fresh.events)&&Array.isArray(fresh.moods)){const previous=new Set(data.events.map(x=>x.id));data=fresh;for(const item of data.events)if(!previous.has(item.id)&&item.from!==me){receivePartnerEvent(item);}render();}}});
-if('serviceWorker' in navigator){swRegistrationPromise=navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(()=>navigator.serviceWorker.ready);swRegistrationPromise.catch(()=>toast('O modo offline e as notificações não ficaram disponíveis neste navegador.'));}
+if('serviceWorker' in navigator){
+ const worker = navigator.serviceWorker;
+ const registration = worker.register('./sw.js',{updateViaCache:'none'});
+ swRegistrationPromise=registration.then(()=>worker.ready);
+ swRegistrationPromise.catch(()=>toast('O modo offline e as notificações não ficaram disponíveis neste navegador.'));
+ let hadController = Boolean(worker.controller), lastWorkerCheck = 0;
+ worker.addEventListener('controllerchange',()=>{
+  if(hadController) toast('Há uma nova versão. Fecha e volta a abrir o Sully para a carregar.');
+  hadController = Boolean(worker.controller);
+ });
+ function checkUpdate(){
+  if(document.hidden||!navigator.onLine||Date.now()-lastWorkerCheck<300000)return;
+  lastWorkerCheck=Date.now();
+  registration.then(reg=>reg.update()).catch(()=>{});
+ }
+ window.addEventListener('pageshow',checkUpdate);
+ document.addEventListener('visibilitychange',checkUpdate);
+}
 const todayUI = configureToday({setStatus});
 const locationUI = configureLocation(() => {
  showPage('settings');

@@ -1,10 +1,10 @@
-const CACHE = 'sully-shell-v10-globo-hoje';
-const SHELL = ['./', './index.html', './style.css?rev=home-focus', './sx-ui.css', './sx-ui.js', './sx-today.js', './sx-location.js', './sx-map.js', './sx-globe.js', './vendor/d3-geo.js', './sx-location-store.js', './sx-date-store.js', './sx-dates.js', './sx-today.css', './app.js?rev=push-firebase', './core.js?rev=home-focus', './icons.js?rev=period-moods', './sky.js', './theme.js', './alerts.js', './push.js?rev=push-firebase', './activity.js', './messages.js', './pairing.js', './cloud.js?rev=shared-alerts', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
-self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(()=>self.skipWaiting())));
+const CACHE = 'sully-shell-v11-globo-atualizacao';
+const SHELL = ['./', './index.html', './style.css?rev=home-focus', './sx-ui.css', './sx-ui.js', './sx-today.js', './sx-location.js?rev=globo-v2', './sx-map.js?rev=globo-v2', './sx-globe.js?rev=globo-v2', './vendor/d3-geo.js', './sx-location-store.js', './sx-date-store.js', './sx-dates.js', './sx-today.css?rev=globo-v2', './app.js?rev=globo-v2', './core.js?rev=home-focus', './icons.js?rev=period-moods', './sky.js', './theme.js', './alerts.js', './push.js?rev=push-firebase', './activity.js', './messages.js', './pairing.js', './cloud.js?rev=shared-alerts', './config.js', './icon.svg', './manifest.webmanifest', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'];
+self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})))).then(()=>self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('sully-shell-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;
-  if (['./sx-cities.json', './sx-globe-land.json'].some(asset => new URL(asset, self.registration.scope).href === e.request.url)) {
+  if (['./sx-cities.json', './sx-globe-land.json?rev=globo-v2'].some(asset => new URL(asset, self.registration.scope).href === e.request.url)) {
     e.respondWith(caches.open(CACHE).then(async cache => {
       const saved = await cache.match(e.request);
       if (saved) return saved;

@@ -38,8 +38,8 @@ export function createMapDialog(refreshOwn) {
     failed = false;
     try {
       const [{createGlobe},land] = await Promise.all([
-        import('./sx-globe.js'),
-        fetch('./sx-globe-land.json').then(response => {
+        import('./sx-globe.js?rev=globo-v2'),
+        fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
           if (!response.ok) throw new Error('Mapa indisponível');
           return response.json();
         })
