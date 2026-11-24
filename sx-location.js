@@ -1,4 +1,4 @@
-import { createMapBackdrop, createMapDialog } from './sx-map.js?rev=hoje-atalhos';
+import { createMapBackdrop, createMapDialog } from './sx-map.js?rev=globo-regional';
 
 const day = 86400000;
 const rad = Math.PI / 18000; // Coordinates are stored in hundredths of a degree.
@@ -48,16 +48,15 @@ export function configureLocation(openLocationSettings) {
     <p class="sx-live-label">Distância entre nós</p>
     <p class="sx-live-distance" role="status"></p>
     <p class="sx-live-route" hidden></p>
-    <div class="sx-live-line" aria-hidden="true"><span></span><span></span></div>
     <p class="sx-live-age" hidden></p>
     <button class="text-button sx-live-enable" type="button" hidden>Ativar localização</button>
     <button class="text-button sx-live-map" type="button" hidden>Ver globo</button>`;
   q('#page-home .sx-distance').prepend(meter);
-  const line = meter.querySelector('.sx-live-line');
   const routeText = meter.querySelector('.sx-live-route');
   const enableFromHome = meter.querySelector('.sx-live-enable');
   enableFromHome.addEventListener('click',openLocationSettings);
   const mapButton = meter.querySelector('.sx-live-map');
+  mapButton.setAttribute('aria-haspopup', 'dialog');
   const map = createMapDialog(() => refreshOwnPosition());
   const renderBackdrop = createMapBackdrop(meter);
   mapButton.onclick = () => { map.open(); show(); };
@@ -85,13 +84,10 @@ export function configureLocation(openLocationSettings) {
     const ownAge = own ? now - own.atualizadoEm?.toMillis() : NaN;
     const current = ownSharing && partnerSharing && ownAge < day && otherAge < day;
     const km = current ? distanceKm(own,other) : undefined;
-    line.classList.toggle('sx-live-known', km !== undefined);
-    line.style.setProperty('--sx-meter-width', km === undefined ? '100%' : km < 1 ? '56px'
-      : Math.max(25, Math.log10(1 + km) / Math.log10(20001) * 100) + '%');
-    const initials = [q('#avatar').textContent, q('#partner-name').textContent];
-    line.querySelectorAll('span').forEach((el,i) => { el.textContent = [...initials[i].trim()][0]?.toUpperCase() || '·'; });
     const place = position => [position?.cidade,position?.pais].filter(Boolean).join(', ');
-    const route = [place(own),place(other)].filter(Boolean).join(' → ');
+    const sameCountry = own?.pais && own.pais === other?.pais && own.cidade && other.cidade;
+    const route = (sameCountry ? [own.cidade, other.cidade] : [place(own), place(other)])
+      .filter(Boolean).join(' · ');
     const distanceLabel = km !== undefined
       ? (km < 1 ? 'Estão perto um do outro' : '≈ ' + displayKm.format(km > 100 ? Math.round(km/10)*10 : Math.round(km)) + ' km')
       : !room ? 'Liga o teu par para veres a distância.'
@@ -102,7 +98,6 @@ export function configureLocation(openLocationSettings) {
       : 'À espera de localizações recentes.';
     if (distanceText.textContent !== distanceLabel) distanceText.textContent = distanceLabel;
     meter.classList.toggle('sx-live-has-distance',km !== undefined);
-    line.hidden = km === undefined;
     routeText.hidden = km === undefined || !route;
     routeText.textContent = routeText.hidden ? '' : route;
     enableFromHome.hidden = !room || ownSharing !== false || !navigator.onLine;

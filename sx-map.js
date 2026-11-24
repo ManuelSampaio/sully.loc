@@ -1,14 +1,19 @@
-function globeMarkup(gradientId,styleClass,viewBox) {
+function globeMarkup(gradientId, styleClass, viewBox, showRoute = false) {
+  const routeMask = gradientId + '-route';
+  const trace = showRoute ? `<mask id="${routeMask}" maskUnits="userSpaceOnUse" x="90" y="0" width="460" height="398">
+          <path class="sx-map-trace" pathLength="1" fill="none" stroke="white" stroke-width="10"/>
+        </mask>` : '';
   return `<svg viewBox="${viewBox}" class="${styleClass}" aria-hidden="true" hidden>
       <defs>
         <radialGradient id="${gradientId}" cx="36%" cy="28%" r="74%">
           <stop stop-color="#335870"/><stop offset="1" stop-color="#14283d"/>
         </radialGradient>
+        ${trace}
       </defs>
       <path class="sx-globe-water" fill="url(#${gradientId})"></path>
       <path class="sx-globe-grid"></path>
       <path class="sx-map-land" fill-rule="evenodd"></path>
-      <path class="sx-map-connection" fill="none"></path>
+      ${showRoute ? `<path class="sx-map-connection" mask="url(#${routeMask})" fill="none" hidden/>` : ''}
       <g class="sx-map-dot sx-map-you" hidden><circle r="8"/></g>
       <g class="sx-map-dot sx-map-partner" hidden><circle r="8"/></g>
     </svg>`;
@@ -17,7 +22,7 @@ function globeMarkup(gradientId,styleClass,viewBox) {
 let assets;
 function globeAssets() {
   assets ||= Promise.all([
-    import('./sx-globe.js?rev=globo-fundo'),
+    import('./sx-globe.js?rev=globo-regional'),
     fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
       if (!response.ok) throw new Error('Mapa indisponível');
       return response.json();
@@ -27,14 +32,14 @@ function globeAssets() {
 }
 
 export function createMapBackdrop(meter) {
-  meter.insertAdjacentHTML('afterbegin',globeMarkup('sx-backdrop-ocean','sx-map-backdrop','150 24 340 350'));
+  meter.insertAdjacentHTML('afterbegin',globeMarkup('sx-backdrop-ocean','sx-map-backdrop','144 22 352 352'));
   const image = meter.querySelector('.sx-map-backdrop');
   let globe, loading, latest;
   function draw() {
     image.toggleAttribute('hidden',!latest || !globe);
     if (!latest) { globe?.stop(); return; }
     if (!globe) return;
-    if (latest.current) globe.show(latest.own,latest.other,() => {});
+    if (latest.current) globe.show(latest.own, latest.other);
     else globe.showIdle();
   }
   return function render(state) {
@@ -58,7 +63,8 @@ export function createMapDialog(refreshOwn) {
   dialog.innerHTML = `<div class="sx-sheet-heading"><h2 id="sx-map-title">Globo de nós dois</h2>
     <button type="button" class="secondary sx-map-close">Fechar</button></div>
     <p class="sx-map-distance" role="status"></p>
-    ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380')}
+    <p class="sx-map-measure" hidden>Distância em linha reta</p>
+    ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380', true)}
     <ul class="sx-map-legend" aria-label="Posições"></ul>
     <button type="button" class="secondary sx-map-refresh">Atualizar a minha localização</button>
     <p class="sx-map-feedback" role="status"></p>
@@ -67,6 +73,7 @@ export function createMapDialog(refreshOwn) {
   const q = value => dialog.querySelector(value);
   const image = q('svg');
   const distance = q('.sx-map-distance');
+  const measure = q('.sx-map-measure');
   const legend = q('.sx-map-legend');
   const refresh = q('.sx-map-refresh');
   const feedback = q('.sx-map-feedback');
@@ -78,7 +85,7 @@ export function createMapDialog(refreshOwn) {
     failed = false;
     try {
       const [{createGlobe},land] = await globeAssets();
-      globe = createGlobe(image,land);
+      globe = createGlobe(image, land, {regional:true});
     } catch {
       failed = true;
       if (dialog.open) feedback.textContent = 'O globo não carregou. A distância continua disponível.';
@@ -109,15 +116,15 @@ export function createMapDialog(refreshOwn) {
         legend.append(entry);
       }
     }
+    measure.hidden = !current;
     image.toggleAttribute('hidden',!globe);
     if (!current || !globe) {
       globe?.showIdle();
       setDistance(current && !failed ? 'A abrir o globo…' : distanceLabel);
       return;
     }
-    globe.show(own,other,() => {
-      if (dialog.open && latest?.current) setDistance(latest.distanceLabel);
-    });
+    setDistance(distanceLabel);
+    globe.show(own, other);
   }
 
   dialog.addEventListener('close',() => { latest = undefined; globe?.stop(); });
