@@ -157,11 +157,6 @@ export function createMapDialog(refreshOwn) {
     <button type="button" class="secondary sx-map-close">Fechar</button></div>
     <p class="sx-map-distance" role="status"></p>
     <p class="sx-map-measure" hidden>Distância em linha reta</p>
-    <p class="sx-map-road-summary" aria-live="polite" hidden>
-      <strong></strong>
-      <span>por estrada · EN100 · ≈ 8 h 12 min de carro</span>
-      <small>Luanda ↔ Benguela · ≈ 419 km em linha reta entre as cidades</small>
-    </p>
     <div class="sx-map-skeleton" aria-hidden="true" hidden></div>
     <div class="sx-map-stage" hidden>
       ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380')}
@@ -192,7 +187,6 @@ export function createMapDialog(refreshOwn) {
   const measure = q('.sx-map-measure');
   const legend = q('.sx-map-legend');
   const source = q('.sx-map-source');
-  const roadSummary = q('.sx-map-road-summary');
   const roadCredit = q('.sx-map-road-credit');
   const refresh = q('.sx-map-refresh');
   const feedback = q('.sx-map-feedback');
@@ -317,14 +311,11 @@ export function createMapDialog(refreshOwn) {
     }
     const matchedRoad = current && roadBetween(own, other);
     const activeRoad = matchedRoad ? road : undefined;
-    roadSummary.hidden = roadCredit.hidden = !activeRoad;
-    if (activeRoad) {
-      const label = roadKmLabel(activeRoad);
-      const value = roadSummary.querySelector('strong');
-      if (value.textContent !== label) value.textContent = label;
-    }
+    roadCredit.hidden = !activeRoad;
     if (matchedRoad && !activeRoad) loadRoadRoute();
-    measure.hidden = !current;
+    measure.hidden = !current || !globe;
+    const distanceKind = activeRoad ? 'Por estrada · EN100 · ≈ 8 h 12 min de carro' : 'Distância em linha reta';
+    if (measure.textContent !== distanceKind) measure.textContent = distanceKind;
     stage.hidden = !globe;
     fit.disabled = !current;
     image.toggleAttribute('hidden',!globe);
@@ -333,7 +324,7 @@ export function createMapDialog(refreshOwn) {
       setDistance(current && !failed ? 'A abrir o globo…' : distanceLabel);
       return;
     }
-    setDistance(distanceLabel);
+    setDistance(activeRoad ? roadKmLabel(activeRoad) : distanceLabel);
     globe.show(own, other);
     globe.setRoadRoute(matchedRoad ? activeRoad?.coordinates : undefined);
   }

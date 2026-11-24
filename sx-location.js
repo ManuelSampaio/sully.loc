@@ -1,4 +1,4 @@
-import { createMapBackdrop, createMapDialog } from './sx-map.js?rev=hoje-percurso';
+import { createMapBackdrop, createMapDialog } from './sx-map.js?rev=distancia-unica';
 
 const day = 86400000;
 const rad = Math.PI / 18000; // Coordinates are stored in hundredths of a degree.

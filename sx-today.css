@@ -163,7 +163,7 @@ dialog.sx-map-sheet {
   .sx-map-skeleton { animation: sx-map-loading 1.4s ease-in-out .2s infinite alternate; }
   @keyframes sx-map-loading { from { opacity: 1; } to { opacity: .52; } }
 }
-:is(.sx-map-distance, .sx-map-road-summary strong, .sx-live-road-distance) {
+:is(.sx-map-distance, .sx-live-road-distance) {
   font-variant-numeric: tabular-nums;
 }
 .sx-map-preview {
@@ -188,13 +188,6 @@ dialog.sx-map-sheet {
 .sx-map-roads { stroke: #b58b54; stroke-width: 1.35; opacity: .72; }
 .sx-map-cities { fill: #263b38; stroke: #fbf9ec; stroke-width: 3; paint-order: stroke; font-size: 13px; font-weight: 650; text-anchor: middle; }
 .sx-map-source, .sx-map-road-credit { margin: 6px 0; color: var(--muted); font-size: 12px; }
-.sx-map-road-summary {
-  display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 8px; margin: 0 0 10px;
-  padding: 7px 11px; border-radius: 10px; background: var(--selected, var(--bg));
-  color: var(--ink); font-size: 13px;
-}
-.sx-map-road-summary small { flex-basis: 100%; color: var(--muted); font-size: 12px; }
-.sx-map-road-summary strong { color: var(--accent); font-size: 16px; }
 .sx-map-road-route {
   fill: none; stroke: #274fae; stroke-width: 5.5; stroke-linecap: round; stroke-linejoin: round;
   filter: drop-shadow(0 0 1.4px #fff);
