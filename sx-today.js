@@ -41,8 +41,10 @@ export function configureToday({setStatus}) {
 
   const stateTrigger = document.createElement('button');
   stateTrigger.type = 'button';
-  stateTrigger.className = 'text-button sx-state-trigger';
-  stateTrigger.textContent = 'O meu estado';
+  stateTrigger.className = 'secondary sx-state-trigger';
+  stateTrigger.innerHTML = '<span class="sx-own-state-copy"><small>O meu estado</small><strong>Ainda sem estado</strong></span>';
+  const stateValue = stateTrigger.querySelector('strong');
+  stateTrigger.append(icon('down'));
   stateTrigger.setAttribute('aria-haspopup', 'dialog');
   home.querySelector('.page-heading').append(stateTrigger);
   stateTrigger.onclick = () => statusSheet.showModal();
@@ -181,7 +183,8 @@ export function configureToday({setStatus}) {
 
   return {
     render({status, until, period, checkIn:record, ownStatus}) {
-      stateTrigger.setAttribute('aria-label', 'O meu estado · ' + ownStatus);
+      if (stateValue.textContent !== ownStatus) stateValue.textContent = ownStatus;
+      stateTrigger.setAttribute('aria-label', 'O meu estado · ' + ownStatus + ' · alterar');
       chat.classList.toggle('sx-chat-highlight', status === 'disponivel');
       const copy = stateCopy[status] || '';
       heartText.textContent = status === 'dormir' ? 'Deixa um coração' : 'Enviar um coração';

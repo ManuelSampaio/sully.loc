@@ -131,7 +131,7 @@ export function configureLocation(openLocationSettings) {
       if (otherClock && lastToday) {
         try {
           const text = new Intl.DateTimeFormat('pt-PT',{hour:'2-digit',minute:'2-digit',timeZone:otherClock}).format();
-          time.textContent = text + ' onde o teu par está.';
+          time.textContent = 'Hora local · ' + text;
           time.hidden = false;
         } catch { /* Unknown time zone. */ }
       }

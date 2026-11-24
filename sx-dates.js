@@ -35,8 +35,10 @@ export function configureDates() {
   button.hidden = true;
   button.textContent = 'Datas';
   button.setAttribute('aria-haspopup','dialog');
-  const distance = document.querySelector('#page-home .sx-distance');
-  distance.append(button);
+  const dates = document.querySelector('#page-home .sx-reunion');
+  const quick = document.querySelector('#page-home .quick-card');
+  quick.after(dates);
+  dates.append(document.querySelector('#home-chat'),button);
   const dialog = document.createElement('dialog');
   dialog.id = 'sx-dates';
   dialog.className = 'sx-sheet';
@@ -61,8 +63,8 @@ export function configureDates() {
   const form = dialog.querySelector('form');
   const deletion = dialog.querySelector('.sx-delete-date');
   const migrate = dialog.querySelector('.sx-migrate-date');
-  const editLocal = distance.querySelector('.sx-date-edit');
-  const reunionLabel = distance.querySelector('.sx-reunion-label');
+  const editLocal = dates.querySelector('.sx-date-edit');
+  const reunionLabel = dates.querySelector('.sx-reunion-label');
   let api, room, owner, stop, rows = [], editId, deleteId, busy = false, drawn;
   function localReunion() {
     try { return localStorage.getItem('sully.ui.reencontro') || ''; } catch { return ''; }
@@ -92,9 +94,11 @@ export function configureDates() {
     const reunion = upcoming.find(row => row.tipo === 'encontro');
     const migration = localReunion();
     button.hidden = !room;
-    button.textContent = next ? `${next.titulo} · ${next.next.days === 0 ? 'hoje' : `${next.next.days} d`}` : 'Datas';
-    const hadReunion = distance.classList.contains('sx-shared-reunion');
-    distance.classList.toggle('sx-shared-reunion',Boolean(reunion));
+    const nextDate = next ? `${next.titulo} · ${next.next.days === 0 ? 'hoje' : `${next.next.days} d`}` : '';
+    const summary = next && reunion !== next ? 'Datas · ' + nextDate : 'Datas';
+    if (button.textContent !== summary) button.textContent = summary;
+    const hadReunion = dates.classList.contains('sx-shared-reunion');
+    dates.classList.toggle('sx-shared-reunion',Boolean(reunion));
     if (reunion) {
       reunionLabel.hidden = false;
       reunionLabel.textContent = reunion.next.days === 0 ? 'O próximo encontro é hoje.' : `Próximo encontro em ${reunion.next.days} ${reunion.next.days === 1 ? 'dia' : 'dias'}.`;
@@ -104,7 +108,9 @@ export function configureDates() {
       reunionLabel.hidden = !(remaining >= 0);
       reunionLabel.textContent = remaining === 0 ? 'É hoje que se vão ver.' : countdown(remaining) + ' para se verem.';
     }
-    editLocal.hidden = Boolean(reunion) || !distance.querySelector('form').hidden;
+    const localForm = dates.querySelector('form');
+    if (room) localForm.hidden = true;
+    editLocal.hidden = Boolean(room) || !localForm.hidden;
     migrate.hidden = !Number.isFinite(calendarDay(migration)) || rows.some(row => row.tipo === 'encontro' && row.data === migration);
     const signature = JSON.stringify([today, ...[...upcoming,...past].map(({id,tipo,titulo,data,anual})=>[id,tipo,titulo,data,anual])]);
     if (drawn === signature) return;

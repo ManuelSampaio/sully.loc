@@ -87,39 +87,44 @@
 
   const distance = document.createElement('section');
   distance.className = 'sx-distance';
-  distance.setAttribute('aria-label', 'O vosso reencontro');
+  distance.setAttribute('aria-label', 'Distância entre nós');
   distance.innerHTML = `<svg class="sx-distance-curve" viewBox="0 0 360 64" aria-hidden="true">
     <g transform="translate(22 32)">
       <path class="sx-line" d="M0 0C75 -44 241 44 316 0"/>
       <circle cx="0" cy="0" r="5" fill="currentColor"/>
       <circle class="sx-end" cx="316" cy="0" r="5"/>
       <circle class="sx-point" r="3.5"/>
-    </g></svg>
-    <p class="sx-reunion-label" hidden></p>
+    </g></svg>`;
+  partner.insertBefore(distance, sendHeart);
+  const reunion = document.createElement('div');
+  reunion.className = 'sx-reunion';
+  reunion.innerHTML = `<p class="sx-reunion-label" hidden></p>
     <button type="button" class="text-button sx-date-edit">Define quando se vão ver</button>
     <form hidden><label for="sx-reunion-date">Data do reencontro</label>
       <input id="sx-reunion-date" type="date" required>
       <button type="submit" class="secondary">Guardar</button>
       <button type="button" class="text-button sx-date-cancel">Cancelar</button>
-    </form>
-    <p class="sx-partner-clock" hidden></p>`;
-  partner.insertBefore(distance, sendHeart);
+    </form>`;
+  partner.insertBefore(reunion, partner.querySelector('#home-chat'));
+  const partnerClock = document.createElement('p');
+  partnerClock.className = 'sx-partner-clock';
+  partnerClock.hidden = true;
+  state.after(partnerClock);
   const reunionKey = 'sully.ui.reencontro';
   const timeZoneKey = 'sully.ui.fusoPar';
   function readLocal(key) {
     try { return localStorage.getItem(key) || ''; } catch { return ''; }
   }
-  const dateForm = distance.querySelector('form');
-  const dateField = distance.querySelector('input');
-  const dateEdit = distance.querySelector('.sx-date-edit');
-  const reunionLabel = distance.querySelector('.sx-reunion-label');
-  const partnerClock = distance.querySelector('.sx-partner-clock');
+  const dateForm = reunion.querySelector('form');
+  const dateField = reunion.querySelector('input');
+  const dateEdit = reunion.querySelector('.sx-date-edit');
+  const reunionLabel = reunion.querySelector('.sx-reunion-label');
   function updateDistance() {
     const today = new Date();
     const todayNumber = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
     const saved = readLocal(reunionKey);
     const days = /^\d{4}-\d{2}-\d{2}$/.test(saved) ? (Date.parse(saved) - todayNumber) / 86400000 : NaN;
-    if (!distance.classList.contains('sx-shared-reunion')) {
+    if (!reunion.classList.contains('sx-shared-reunion')) {
       reunionLabel.hidden = !(days >= 0);
       reunionLabel.textContent = days === 0 ? 'É hoje que se vão ver.' : days === 1
       ? 'Falta 1 dia para se verem.' : `Faltam ${days} dias para se verem.`;
@@ -131,7 +136,7 @@
     if (timeZone && !document.hidden && !distance.hidden && !home.hidden && !workspace.hidden) {
       try {
         const time = new Intl.DateTimeFormat('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone }).format(today);
-        partnerClock.textContent = `${time} onde o teu par está.`;
+        partnerClock.textContent = `Hora local · ${time}`;
         partnerClock.hidden = false;
       } catch { /* No local time for an invalid time zone. */ }
     }
@@ -148,7 +153,7 @@
     dateForm.hidden = false;
     dateField.focus();
   });
-  distance.querySelector('.sx-date-cancel').addEventListener('click', closeDateForm);
+  reunion.querySelector('.sx-date-cancel').addEventListener('click', closeDateForm);
   dateField.addEventListener('input', () => dateField.setCustomValidity(''));
   dateForm.addEventListener('submit', event => {
     event.preventDefault();
@@ -191,6 +196,7 @@
     initial.hidden = !connected;
     initial.textContent = Array.from(name.textContent.trim())[0]?.toLocaleUpperCase('pt-PT') || '';
     distance.hidden = !connected;
+    reunion.hidden = !connected;
     updateRings();
     updateSharedTime();
     updateDistance();
