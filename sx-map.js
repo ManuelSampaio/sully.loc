@@ -6,7 +6,7 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false, detaile
   return `<svg viewBox="${viewBox}" class="${styleClass}" aria-hidden="true" hidden>
       <defs>
         <radialGradient id="${gradientId}" cx="36%" cy="28%" r="74%">
-          <stop stop-color="#335870"/><stop offset="1" stop-color="#14283d"/>
+          <stop stop-color="var(--sx-map-water-light, #a3dce8)"/><stop offset="1" stop-color="var(--sx-map-water-dark, #78c4d9)"/>
         </radialGradient>
         ${trace}
       </defs>
@@ -26,7 +26,7 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false, detaile
 let assets;
 function globeAssets() {
   assets ||= Promise.all([
-    import('./sx-globe.js?rev=percurso-estrada'),
+    import('./sx-globe.js?rev=mapa-costeiro'),
     fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
       if (!response.ok) throw new Error('Mapa indisponível');
       return response.json();
@@ -35,22 +35,87 @@ function globeAssets() {
   return assets;
 }
 
+let detailAssets, coastalRoute;
+async function readMapAsset(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Mapa detalhado indisponível');
+  return response.json();
+}
+function mapDetails() {
+  detailAssets ||= Promise.all(['./sx-map-roads.json?v=1', './sx-cities.json'].map(readMapAsset))
+    .then(([detail, cities]) => ({ ...detail, cities }))
+    .catch(error => { detailAssets = undefined; throw error; });
+  return detailAssets;
+}
+function mapRoadRoute() {
+  coastalRoute ||= readMapAsset('./sx-route-luanda-benguela.json?v=1')
+    .catch(error => { coastalRoute = undefined; throw error; });
+  return coastalRoute;
+}
+function roadBetween(a, b) {
+  const nearby = (place, name, lng, lat) => place.cidade?.trim().toLowerCase() === name
+    && Math.hypot(place.lngE2 / 100 - lng, place.latE2 / 100 - lat) < .18;
+  const luanda = place => nearby(place, 'luanda', 13.23, -8.84);
+  const benguela = place => nearby(place, 'benguela', 13.41, -12.58);
+  return (luanda(a) && benguela(b)) || (luanda(b) && benguela(a));
+}
+
+function roadKmLabel(road) {
+  return `≈ ${Math.round(road.km / 10) * 10} km`;
+}
+
 export function createMapBackdrop(meter) {
-  meter.insertAdjacentHTML('afterbegin', globeMarkup('sx-backdrop-ocean', 'sx-map-backdrop', '144 22 352 352', true));
+  meter.insertAdjacentHTML('afterbegin', globeMarkup('sx-backdrop-ocean', 'sx-map-backdrop', '166 22 308 352', true, true));
   const image = meter.querySelector('.sx-map-backdrop');
-  let globe, loading, latest, introStarted = false;
+  image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+  const credit = document.createElement('a');
+  credit.href = 'https://www.openstreetmap.org/copyright';
+  credit.target = '_blank';
+  credit.rel = 'noopener noreferrer';
+  credit.className = 'sx-map-card-credit';
+  credit.textContent = '© OpenStreetMap';
+  credit.hidden = true;
+  meter.append(credit);
+  const roadDistance = document.createElement('p');
+  roadDistance.className = 'sx-live-road-distance';
+  roadDistance.hidden = true;
+  meter.querySelector('.sx-live-route').after(roadDistance);
+  let globe, loading, latest, details, road, introStarted = false;
+  let loadingDetails = false, loadingRoad = false;
   let visible = typeof IntersectionObserver !== 'function';
   function draw() {
     image.toggleAttribute('hidden', !latest || !globe);
+    const hasPair = latest?.current && globe && (visible || introStarted);
+    const matchedRoad = hasPair && roadBetween(latest.own, latest.other);
+    credit.hidden = roadDistance.hidden = !matchedRoad || !road;
+    if (!roadDistance.hidden) {
+      const label = `${roadKmLabel(road)} por estrada`;
+      if (roadDistance.textContent !== label) roadDistance.textContent = label;
+    }
     if (!latest) {
       introStarted = false;
       globe?.stop();
       return;
     }
     if (!globe) return;
-    if (latest.current && (visible || introStarted)) {
+    if (hasPair) {
       introStarted = true;
       globe.show(latest.own, latest.other);
+      globe.setRoadRoute(matchedRoad ? road?.coordinates : undefined);
+      if (!details && !loadingDetails) {
+        loadingDetails = true;
+        mapDetails().then(data => {
+          details = data;
+          globe.setDetails(data);
+        }).catch(() => {}).finally(() => { loadingDetails = false; });
+      }
+      if (matchedRoad && !road && !loadingRoad) {
+        loadingRoad = true;
+        mapRoadRoute().then(data => {
+          road = data;
+          draw();
+        }).catch(() => {}).finally(() => { loadingRoad = false; });
+      }
     } else {
       globe.showIdle();
     }
@@ -88,6 +153,7 @@ export function createMapDialog(refreshOwn) {
       <strong></strong>
       <span>Por estrada · Luanda ↔ Benguela</span>
     </p>
+    <div class="sx-map-skeleton" aria-hidden="true" hidden></div>
     <div class="sx-map-stage" hidden>
       ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380', true, true)}
       <div class="sx-map-controls" role="group" aria-label="Controlos do globo">
@@ -106,6 +172,7 @@ export function createMapDialog(refreshOwn) {
   document.body.append(dialog);
   const q = value => dialog.querySelector(value);
   const stage = q('.sx-map-stage');
+  const skeleton = q('.sx-map-skeleton');
   const image = q('.sx-map-preview');
   const fit = q('.sx-map-fit');
   image.removeAttribute('aria-hidden');
@@ -121,7 +188,7 @@ export function createMapDialog(refreshOwn) {
   const refresh = q('.sx-map-refresh');
   const feedback = q('.sx-map-feedback');
   let globe, loading, failed = false, previousLegend, latest, detailStatus;
-  let coastalRoute, loadingRoute = false;
+  let road, loadingRoute = false;
   const pointers = new Map();
   const zoomStep = 1.35;
   q('.sx-map-in').onclick = () => globe?.move(0, 0, zoomStep);
@@ -186,6 +253,8 @@ export function createMapDialog(refreshOwn) {
       if (dialog.open) feedback.textContent = 'O globo não carregou. A distância continua disponível.';
     } finally {
       loading = false;
+      skeleton.hidden = true;
+      stage.removeAttribute('aria-busy');
       if (latest) render(latest);
       if (dialog.open) loadDetails();
     }
@@ -195,12 +264,7 @@ export function createMapDialog(refreshOwn) {
     if (!globe || detailStatus === 'loading' || detailStatus === 'ready') return;
     detailStatus = 'loading';
     try {
-      const [detail, cities] = await Promise.all(['./sx-map-roads.json?v=1', './sx-cities.json'].map(async url => {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Mapa detalhado indisponível');
-        return response.json();
-      }));
-      globe.setDetails({ ...detail, cities });
+      globe.setDetails(await mapDetails());
       source.hidden = false;
       detailStatus = 'ready';
     } catch {
@@ -208,22 +272,11 @@ export function createMapDialog(refreshOwn) {
     }
   }
 
-  function nearby(place, name, [lng, lat]) {
-    return place.cidade?.trim().toLowerCase() === name
-      && Math.hypot(place.lngE2 / 100 - lng, place.latE2 / 100 - lat) < .18;
-  }
-  function roadBetween(a, b) {
-    const fromLuanda = place => nearby(place, 'luanda', [13.23, -8.84]);
-    const fromBenguela = place => nearby(place, 'benguela', [13.41, -12.58]);
-    return (fromLuanda(a) && fromBenguela(b)) || (fromLuanda(b) && fromBenguela(a));
-  }
   async function loadRoadRoute() {
-    if (loadingRoute || coastalRoute) return;
+    if (loadingRoute || road) return;
     loadingRoute = true;
     try {
-      const response = await fetch('./sx-route-luanda-benguela.json?v=1');
-      if (!response.ok) return;
-      coastalRoute = await response.json();
+      road = await mapRoadRoute();
       if (latest) render(latest);
     } catch {
       // The existing straight-line view remains available if the route cannot load.
@@ -254,10 +307,10 @@ export function createMapDialog(refreshOwn) {
       }
     }
     const matchedRoad = current && roadBetween(own, other);
-    const activeRoad = matchedRoad ? coastalRoute : undefined;
+    const activeRoad = matchedRoad ? road : undefined;
     roadSummary.hidden = roadCredit.hidden = !activeRoad;
     if (activeRoad) {
-      const label = `≈ ${Math.round(activeRoad.km / 10) * 10} km`;
+      const label = roadKmLabel(activeRoad);
       const value = roadSummary.querySelector('strong');
       if (value.textContent !== label) value.textContent = label;
     }
@@ -302,8 +355,13 @@ export function createMapDialog(refreshOwn) {
       feedback.textContent = '';
       dialog.showModal();
       setDistance('');
-      if (globe) loadDetails();
-      else loadGlobe();
+      if (globe) {
+        loadDetails();
+      } else {
+        skeleton.hidden = false;
+        stage.setAttribute('aria-busy', 'true');
+        loadGlobe();
+      }
     },
     close() { if (dialog.open) dialog.close(); },
     render

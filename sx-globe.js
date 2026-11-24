@@ -29,7 +29,8 @@ function mapDetails(svg, { roads, borders, cities }, projection, path) {
     return { line, south: Math.min(...latitudes), north: Math.max(...latitudes) };
   }));
   const places = cities.map(([name, , , lat, lng]) => ({ name, lng: lng / 100, lat: lat / 100 }));
-  const maxLabels = labels.length;
+  const compact = svg.classList.contains('sx-map-backdrop');
+  const maxLabels = compact ? 4 : labels.length;
   return (camera, zoom, cityNames) => {
     const reach = Math.asin(Math.min(1, 280 / zoom)) / rad;
     for (const [index, layer] of [bordersPath, roadsPath].entries()) {
@@ -45,7 +46,7 @@ function mapDetails(svg, { roads, borders, cities }, projection, path) {
         // At regional zoom the visible map is much smaller than a hemisphere.
         if (Math.abs(lat - camera[1]) > reach || Math.abs(wrap(lng - camera[0])) > 90) continue;
         const [x,y] = projection([lng,lat]);
-        if (x < 122 || x > 518 || y < 30 || y > 360) continue;
+        if (y < 40 || y > 350 || x < (compact ? 224 : 122) || x > (compact ? 418 : 518)) continue;
         candidates.push({name,x,y, priority:cityNames.includes(name), distance:Math.hypot(x - 320, y - 198)});
       }
       candidates.sort((a,b) => b.priority - a.priority || a.distance - b.distance);
@@ -60,8 +61,8 @@ function mapDetails(svg, { roads, borders, cities }, projection, path) {
       label.toggleAttribute('hidden', !place);
       if (!place) return;
       label.textContent = place.name;
-      label.setAttribute('x', place.x);
-      label.setAttribute('y', place.y + 19);
+      label.setAttribute('x', compact ? place.x + 16 : place.x);
+      label.setAttribute('y', place.y + (compact ? 5 : 19));
     });
   };
 }
