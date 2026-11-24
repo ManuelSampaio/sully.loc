@@ -1,32 +1,22 @@
-const svgNS = 'http://www.w3.org/2000/svg';
-const width = 640;
-const height = 360;
-
-export function mapCamera(first, second) {
-  const x = first.lngE2 / 100;
-  const delta = ((second.lngE2 - first.lngE2 + 54000) % 36000 - 18000) / 100;
-  const y = -first.latE2 / 100, otherY = -second.latE2 / 100;
-  const centerX = x + delta / 2, centerY = (y + otherY) / 2;
-  const scale = Math.min(95, 480 / (Math.abs(delta) || 1), 250 / (Math.abs(y - otherY) || 1));
-  return {
-    landTransform:`translate(${width/2} ${height/2}) scale(${scale}) translate(${-centerX} ${-centerY})`,
-    points:[[width/2 - delta*scale/2,height/2+(y-centerY)*scale],
-      [width/2+delta*scale/2,height/2+(otherY-centerY)*scale]]
-  };
-}
-
 export function createMapDialog(refreshOwn) {
   const dialog = document.createElement('dialog');
   dialog.className = 'sx-sheet sx-map-sheet';
   dialog.setAttribute('aria-labelledby','sx-map-title');
-  dialog.innerHTML = `<div class="sx-sheet-heading"><h2 id="sx-map-title">Mapa de nós dois</h2>
+  dialog.innerHTML = `<div class="sx-sheet-heading"><h2 id="sx-map-title">Globo de nós dois</h2>
     <button type="button" class="secondary sx-map-close">Fechar</button></div>
     <p class="sx-map-distance" role="status"></p>
-    <svg viewBox="0 0 640 360" class="sx-map-preview" aria-hidden="true" hidden>
-      <g class="sx-map-land" fill-rule="evenodd"></g>
-      <line class="sx-map-connection"></line>
-      <g class="sx-map-dot sx-map-you"><circle r="15"/><circle r="7"/></g>
-      <g class="sx-map-dot sx-map-partner"><circle r="15"/><circle r="7"/></g>
+    <svg viewBox="0 0 640 398" class="sx-map-preview" aria-hidden="true" hidden>
+      <defs>
+        <radialGradient id="sx-globe-ocean" cx="36%" cy="28%" r="74%">
+          <stop stop-color="#335870"/><stop offset="1" stop-color="#14283d"/>
+        </radialGradient>
+      </defs>
+      <path class="sx-globe-water" fill="url(#sx-globe-ocean)"></path>
+      <path class="sx-globe-grid"></path>
+      <path class="sx-map-land" fill-rule="evenodd"></path>
+      <path class="sx-map-connection" fill="none"></path>
+      <g class="sx-map-dot sx-map-you" hidden><circle r="8"/></g>
+      <g class="sx-map-dot sx-map-partner" hidden><circle r="8"/></g>
     </svg>
     <ul class="sx-map-legend" aria-label="Posições"></ul>
     <button type="button" class="secondary sx-map-refresh">Atualizar a minha localização</button>
@@ -40,36 +30,40 @@ export function createMapDialog(refreshOwn) {
   const legend = q('.sx-map-legend');
   const refresh = q('.sx-map-refresh');
   const feedback = q('.sx-map-feedback');
-  let loaded, previousLegend;
+  let globe, loading, failed = false, previousLegend, latest;
 
-  async function loadLand() {
-    if (loaded) return;
+  async function loadGlobe() {
+    if (globe || loading) return;
+    loading = true;
+    failed = false;
     try {
-      const response = await fetch('./sx-map-land.json');
-      if (!response.ok) throw new Error('Mapa indisponível');
-      const paths = await response.json();
-      if (!Array.isArray(paths)) throw new Error('Mapa inválido');
-      const fragment = document.createDocumentFragment();
-      for (const shift of [-360,0,360]) {
-        const group = document.createElementNS(svgNS,'g');
-        group.setAttribute('transform',`translate(${shift} 0)`);
-        const path = document.createElementNS(svgNS,'path');
-        path.setAttribute('d',paths.join(' '));
-        group.append(path);
-        fragment.append(group);
-      }
-      land.replaceChildren(fragment);
-      loaded = true;
+      const [{createGlobe},land] = await Promise.all([
+        import('./sx-globe.js'),
+        fetch('./sx-globe-land.json').then(response => {
+          if (!response.ok) throw new Error('Mapa indisponível');
+          return response.json();
+        })
+      ]);
+      globe = createGlobe(image,land);
     } catch {
-      feedback.textContent = 'O fundo do mapa está indisponível. Os pontos continuam visíveis quando há duas posições.';
+      failed = true;
+      if (dialog.open) feedback.textContent = 'O globo não carregou. A distância continua disponível.';
+    } finally {
+      loading = false;
+      if (latest) render(latest);
     }
   }
 
-  function render({current, distanceLabel, own, other, ownSharing, canUpdate, descriptions}) {
+  function setDistance(text) {
+    if (distance.textContent !== text) distance.textContent = text;
+  }
+
+  function render(state) {
     if (!dialog.open) return;
+    latest = state;
+    const {current,distanceLabel,own,other,ownSharing,canUpdate,descriptions} = state;
     refresh.hidden = !ownSharing;
     refresh.disabled = refresh.dataset.sxUpdating === 'true' || !canUpdate;
-    if (distance.textContent !== distanceLabel) distance.textContent = distanceLabel;
     const signature = JSON.stringify(descriptions);
     if (signature !== previousLegend) {
       previousLegend = signature;
@@ -81,21 +75,18 @@ export function createMapDialog(refreshOwn) {
         legend.append(entry);
       }
     }
-    image.toggleAttribute('hidden',!current);
-    if (!current) return;
-    const camera = mapCamera(own,other);
-    land.setAttribute('transform',camera.landTransform);
-    const [a,b] = camera.points;
-    const overlap = Math.hypot(a[0]-b[0],a[1]-b[1]) < 16;
-    const connection = q('line');
-    connection.setAttribute('x1',a[0]); connection.setAttribute('y1',a[1]);
-    connection.setAttribute('x2',b[0]); connection.setAttribute('y2',b[1]);
-    const dots = image.querySelectorAll('.sx-map-dot');
-    for (const [index,[x,y]] of camera.points.entries()) {
-      dots[index].setAttribute('transform',`translate(${x+(overlap?(index?7:-7):0)} ${y})`);
+    image.toggleAttribute('hidden',!globe);
+    if (!current || !globe) {
+      globe?.showIdle();
+      setDistance(current && !failed ? 'A abrir o globo…' : distanceLabel);
+      return;
     }
+    globe.show(own,other,() => {
+      if (dialog.open && latest?.current) setDistance(latest.distanceLabel);
+    });
   }
 
+  dialog.addEventListener('close',() => { latest = undefined; globe?.stop(); });
   q('.sx-map-close').onclick = () => dialog.close();
   refresh.onclick = async () => {
     refresh.dataset.sxUpdating = 'true';
@@ -115,7 +106,8 @@ export function createMapDialog(refreshOwn) {
     open() {
       feedback.textContent = '';
       dialog.showModal();
-      loadLand();
+      setDistance('');
+      loadGlobe();
     },
     close() { if (dialog.open) dialog.close(); },
     render

@@ -51,7 +51,7 @@ export function configureLocation(openLocationSettings) {
     <div class="sx-live-line" aria-hidden="true"><span></span><span></span></div>
     <p class="sx-live-age" hidden></p>
     <button class="text-button sx-live-enable" type="button" hidden>Ativar localização</button>
-    <button class="text-button sx-live-map" type="button" hidden>Ver mapa</button>`;
+    <button class="text-button sx-live-map" type="button" hidden>Ver globo</button>`;
   q('#page-home .sx-distance').prepend(meter);
   const line = meter.querySelector('.sx-live-line');
   const routeText = meter.querySelector('.sx-live-route');
