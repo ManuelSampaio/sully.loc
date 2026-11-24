@@ -20,6 +20,52 @@ export function globeCenter(a,b) {
   return [Math.atan2(y,x)/rad,Math.atan2(z,Math.hypot(x,y))/rad];
 }
 
+function mapDetails(svg, { roads, borders, cities }, projection, path) {
+  const roadsPath = svg.querySelector('.sx-map-roads');
+  const bordersPath = svg.querySelector('.sx-map-borders');
+  const labels = svg.querySelectorAll('.sx-map-cities text');
+  const lineLayers = [borders, roads].map(lines => lines.map(line => {
+    const latitudes = line.map(point => point[1]);
+    return { line, south: Math.min(...latitudes), north: Math.max(...latitudes) };
+  }));
+  const places = cities.map(([name, , , lat, lng]) => ({ name, lng: lng / 100, lat: lat / 100 }));
+  const maxLabels = labels.length;
+  return (camera, zoom, cityNames) => {
+    const reach = Math.asin(Math.min(1, 280 / zoom)) / rad;
+    for (const [index, layer] of [bordersPath, roadsPath].entries()) {
+      const lines = zoom < (index === 0 ? 240 : 680) ? [] : lineLayers[index]
+        .filter(({south,north}) => north >= camera[1] - reach && south <= camera[1] + reach)
+        .map(({line}) => line);
+      layer.setAttribute('d', path({type:'MultiLineString', coordinates:lines}) || '');
+    }
+    const shown = [];
+    if (zoom >= 900) {
+      const candidates = [];
+      for (const {name,lng,lat} of places) {
+        // At regional zoom the visible map is much smaller than a hemisphere.
+        if (Math.abs(lat - camera[1]) > reach || Math.abs(wrap(lng - camera[0])) > 90) continue;
+        const [x,y] = projection([lng,lat]);
+        if (x < 122 || x > 518 || y < 30 || y > 360) continue;
+        candidates.push({name,x,y, priority:cityNames.includes(name), distance:Math.hypot(x - 320, y - 198)});
+      }
+      candidates.sort((a,b) => b.priority - a.priority || a.distance - b.distance);
+      for (const candidate of candidates) {
+        if (shown.some(p => Math.abs(p.x - candidate.x) < 88 && Math.abs(p.y - candidate.y) < 24)) continue;
+        shown.push(candidate);
+        if (shown.length === maxLabels) break;
+      }
+    }
+    labels.forEach((label,index) => {
+      const place = shown[index];
+      label.toggleAttribute('hidden', !place);
+      if (!place) return;
+      label.textContent = place.name;
+      label.setAttribute('x', place.x);
+      label.setAttribute('y', place.y + 19);
+    });
+  };
+}
+
 export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {}) {
   const projection = geoOrthographic().translate([320,198]).scale(worldScale).clipAngle(90).precision(.8);
   const path = geoPath(projection);
@@ -31,7 +77,8 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
   const dots = svg.querySelectorAll('.sx-map-dot');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let center, scale = worldScale, target, frame, points;
-  let idle = false, manual = false;
+  let idle = false, manual = false, renderDetails;
+  let cityNames = [];
 
   function hideRoute() {
     if (route) {
@@ -46,6 +93,7 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
     water.setAttribute('d', path(sphere) || '');
     graticule.setAttribute('d', path(grid) || '');
     landPath.setAttribute('d', path(land) || '');
+    renderDetails?.(camera, zoom, cityNames);
     if (!locations) return;
 
     const visible = locations.map(point => geoInterpolate(camera, point).distance <= Math.PI / 2 + 1e-8);
@@ -82,6 +130,7 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
     center = target = points = undefined;
     scale = worldScale;
     idle = manual = false;
+    cityNames = [];
     hideRoute();
   }
   function focusPair() {
@@ -123,10 +172,12 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
   function show(a, b) {
     idle = false;
     const locations = [a, b].map(point => [point.lngE2 / 100, point.latE2 / 100]);
-    const key = locations.flat().join(',');
+    const names = [a.cidade, b.cidade].filter(Boolean);
+    const key = JSON.stringify([locations, names]);
     if (target === key) return;
     target = key;
     points = locations;
+    cityNames = names;
     if (manual) paint(center, scale, points);
     else focusPair();
   }
@@ -147,5 +198,9 @@ export function createGlobe(svg, land, { regional = false, fitRadius = 137 } = {
     center = undefined;
     idle = true;
   }
-  return {show, stop, showIdle, move, focusPair};
+  function setDetails(data) {
+    renderDetails = mapDetails(svg, data, projection, path);
+    if (center) renderDetails(center, scale, cityNames);
+  }
+  return {show, stop, showIdle, move, focusPair, setDetails};
 }

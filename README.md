@@ -89,6 +89,8 @@ Validação desta alteração: 26 testes do cliente/lógica e 12 do emissor. Os 
 
 `sx-cities.json` usa [Natural Earth 1:10m Populated Places Simple v5.1.2](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-populated-places/), dados de domínio público. A lista é servida pelo próprio Sully e só é pedida quando alguém ativa a localização. A aproximação procura uma cidade da lista até 300 km. A cidade e o país podem ser corrigidos no Perfil.
 
-O fundo de `sx-globe-land.json` usa [Natural Earth 1:110m Land](https://www.naturalearthdata.com/downloads/110m-physical-vectors/). O mapa só pede esse ficheiro ao abrir. As posições são desenhadas no dispositivo, sem enviar as coordenadas para um serviço de mapas.
+O fundo de `sx-globe-land.json` usa [Natural Earth 1:110m Land](https://www.naturalearthdata.com/downloads/110m-physical-vectors/). O cartão do Hoje usa apenas esse ficheiro para o fundo do globo. As posições são desenhadas no dispositivo, sem enviar as coordenadas para um serviço de mapas.
+
+Ao abrir **Ver globo**, a Sully carrega `sx-map-roads.json` do mesmo site. Este ficheiro reúne fronteiras mundiais de Natural Earth 1:110m e estradas principais de Angola e arredores, simplificadas a partir de [Natural Earth 1:10m Roads v5.1.2](https://github.com/nvkelso/natural-earth-vector/tree/v5.1.2/10m_cultural). Os nomes das cidades são desenhados a partir da lista local. A distância indicada é em linha reta.
 
 O globo usa a projeção ortográfica do D3 Geo. O módulo ESM de `vendor/d3-geo.js` foi preparado a partir de `d3-geo@3.1.1` e inclui os quatro exports usados. As licenças ficam em `vendor/d3-geo.LICENSE.txt`.

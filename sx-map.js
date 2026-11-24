@@ -1,4 +1,4 @@
-function globeMarkup(gradientId, styleClass, viewBox, showRoute = false) {
+function globeMarkup(gradientId, styleClass, viewBox, showRoute = false, detailed = false) {
   const routeMask = gradientId + '-route';
   const trace = showRoute ? `<mask id="${routeMask}" maskUnits="userSpaceOnUse" x="90" y="0" width="460" height="398">
           <path class="sx-map-trace" pathLength="1" fill="none" stroke="white" stroke-width="10"/>
@@ -13,6 +13,9 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false) {
       <path class="sx-globe-water" fill="url(#${gradientId})"></path>
       <path class="sx-globe-grid"></path>
       <path class="sx-map-land" fill-rule="evenodd"></path>
+      ${detailed ? `<path class="sx-map-borders" aria-hidden="true"/>
+        <path class="sx-map-roads" aria-hidden="true"/>
+        <g class="sx-map-cities" aria-hidden="true">${'<text hidden/>'.repeat(7)}</g>` : ''}
       ${showRoute ? `<path class="sx-map-connection" mask="url(#${routeMask})" fill="none" hidden/>` : ''}
       <g class="sx-map-dot sx-map-you" hidden><circle r="8"/></g>
       <g class="sx-map-dot sx-map-partner" hidden><circle r="8"/></g>
@@ -22,7 +25,7 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false) {
 let assets;
 function globeAssets() {
   assets ||= Promise.all([
-    import('./sx-globe.js?rev=globo-automatico'),
+    import('./sx-globe.js?rev=mapa-estradas'),
     fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
       if (!response.ok) throw new Error('Mapa indisponível');
       return response.json();
@@ -81,7 +84,7 @@ export function createMapDialog(refreshOwn) {
     <p class="sx-map-distance" role="status"></p>
     <p class="sx-map-measure" hidden>Distância em linha reta</p>
     <div class="sx-map-stage" hidden>
-      ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380', true)}
+      ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380', true, true)}
       <div class="sx-map-controls" role="group" aria-label="Controlos do globo">
         <button type="button" aria-label="Reduzir" class="sx-map-out">−</button>
         <button type="button" aria-label="Ampliar" class="sx-map-in">+</button>
@@ -89,6 +92,7 @@ export function createMapDialog(refreshOwn) {
       </div>
     </div>
     <ul class="sx-map-legend" aria-label="Posições"></ul>
+    <p class="sx-map-source" hidden>Estradas principais de Angola e da região · Natural Earth</p>
     <button type="button" class="secondary sx-map-refresh">Atualizar a minha localização</button>
     <p class="sx-map-feedback" role="status"></p>
     <p class="footnote">Posições aproximadas. Cada posição atualiza quando a pessoa está com o Sully aberto.</p>`;
@@ -104,9 +108,10 @@ export function createMapDialog(refreshOwn) {
   const distance = q('.sx-map-distance');
   const measure = q('.sx-map-measure');
   const legend = q('.sx-map-legend');
+  const source = q('.sx-map-source');
   const refresh = q('.sx-map-refresh');
   const feedback = q('.sx-map-feedback');
-  let globe, loading, failed = false, previousLegend, latest;
+  let globe, loading, failed = false, previousLegend, latest, detailStatus;
   const pointers = new Map();
   const zoomStep = 1.35;
   q('.sx-map-in').onclick = () => globe?.move(0, 0, zoomStep);
@@ -172,6 +177,24 @@ export function createMapDialog(refreshOwn) {
     } finally {
       loading = false;
       if (latest) render(latest);
+      if (dialog.open) loadDetails();
+    }
+  }
+
+  async function loadDetails() {
+    if (!globe || detailStatus === 'loading' || detailStatus === 'ready') return;
+    detailStatus = 'loading';
+    try {
+      const [detail, cities] = await Promise.all(['./sx-map-roads.json?v=1', './sx-cities.json'].map(async url => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Mapa detalhado indisponível');
+        return response.json();
+      }));
+      globe.setDetails({ ...detail, cities });
+      source.hidden = false;
+      detailStatus = 'ready';
+    } catch {
+      detailStatus = undefined;
     }
   }
 
@@ -235,7 +258,8 @@ export function createMapDialog(refreshOwn) {
       feedback.textContent = '';
       dialog.showModal();
       setDistance('');
-      loadGlobe();
+      if (globe) loadDetails();
+      else loadGlobe();
     },
     close() { if (dialog.open) dialog.close(); },
     render
