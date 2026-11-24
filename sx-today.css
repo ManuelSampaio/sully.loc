@@ -79,15 +79,49 @@ body:has(#page-home:not([hidden])) .mode-banner.sx-network-ok { display: none; }
 #page-home #quick-actions { gap: 4px; }
 #page-home #quick-actions .quick-tile { padding: 4px 6px; gap: 5px; }
 #page-home #quick-actions .quick-tile .s-icon { width: 16px; height: 16px; flex-shrink: 0; }
-#page-home .mood-card > summary { margin-bottom: 0; }
-#page-home .sx-optional-note > summary { font-size: 14px; }
-#page-home .moods button { flex-direction: row; align-items: center; justify-content: center; gap: 2px; padding: 4px; }
-#page-home .moods button .s-icon { width: 17px; height: 17px; flex-shrink: 0; }
-#page-home .moods small { line-height: 1.15; }
+:is(#page-home, .sx-sheet) .mood-card > summary {
+  margin: 0; font-weight: 650; min-height: 44px;
+}
+:is(#page-home, .sx-sheet) .mood-card .period-tabs {
+  gap: 3px; margin: 8px 0 16px; padding: 3px; border: 1px solid var(--line);
+  border-radius: 14px; background: var(--bg);
+}
+:is(#page-home, .sx-sheet) .mood-card .period-tabs button {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  min-width: 0; padding: 4px 6px; border: 0; border-radius: 10px;
+}
+:is(#page-home, .sx-sheet) .mood-card .period-tabs button.active {
+  background: var(--selected, var(--card)); color: var(--accent);
+}
+:is(#page-home, .sx-sheet) .mood-card .period-tabs .s-icon {
+  flex: 0 0 16px; width: 16px; height: 16px;
+}
+:is(#page-home, .sx-sheet) .mood-card .mood-question {
+  color: var(--ink); font-size: 16px; font-weight: 650; line-height: 1.35; margin-bottom: 10px;
+}
+:is(#page-home, .sx-sheet) .mood-card .moods {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 8px;
+}
+:is(#page-home, .sx-sheet) .mood-card .moods button {
+  display: grid; justify-items: center; align-content: center; gap: 5px; min-height: 67px;
+  padding: 5px 4px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--card); color: var(--ink); text-align: center;
+}
+:is(#page-home, .sx-sheet) .mood-card .moods button.selected {
+  color: var(--accent); border-color: var(--accent); background: var(--selected, var(--bg));
+  box-shadow: inset 0 0 0 1px var(--accent); font-weight: 650;
+}
+:is(#page-home, .sx-sheet) .mood-card .moods .s-icon {
+  display: block; width: 22px; height: 22px; color: var(--accent);
+}
+:is(#page-home, .sx-sheet) .mood-card .moods small { font-size: 13px; line-height: 1.15; }
+:is(#page-home, .sx-sheet) .sx-optional-note > summary {
+  color: var(--accent); font-size: 14px; min-height: 44px;
+}
 @media(max-width:440px) {
-  #page-home .moods button .s-icon { display: none; }
   #page-home #quick-actions .quick-tile .s-icon { display: none; }
 }
+
 
 dialog.sx-map-sheet {
   inset: 0; margin: auto; width: min(560px, calc(100% - 24px));
@@ -112,12 +146,22 @@ dialog.sx-map-sheet {
 .sx-map-distance { margin: 4px 0 8px; font-weight: 700; color: var(--ink); }
 .sx-map-distance:has(+ .sx-map-measure:not([hidden])) { font-size: clamp(1.25rem, 5vw, 1.75rem); margin-bottom: 0; }
 .sx-map-measure { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.sx-map-stage { width: min(100%, 500px); margin-inline: auto; }
 .sx-map-preview {
-  display: block; width: min(100%, 500px); height: auto; max-height: min(48dvh, 420px);
-  margin-inline: auto; overflow: hidden;
+  display: block; width: 100%; height: auto; max-height: min(48dvh, 420px);
+  overflow: hidden; touch-action: none; cursor: grab; user-select: none;
   background: radial-gradient(ellipse at 50% 45%, #213a50, #111e2b 76%);
   border: 1px solid var(--line); border-radius: var(--sx-r-md);
 }
+.sx-map-preview.sx-map-dragging { cursor: grabbing; }
+.sx-map-preview:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sx-map-controls { display: flex; flex-wrap: wrap; justify-content: end; align-items: center; gap: 6px; margin-top: 8px; }
+.sx-map-controls button {
+  min-width: 44px; padding: 0 12px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--card); color: var(--accent);
+}
+.sx-map-controls :is(.sx-map-in, .sx-map-out) { font-size: 20px; }
+.sx-map-fit:disabled { cursor: default; }
 .sx-globe-grid { fill: none; stroke: #a8c2d2; stroke-width: .65; opacity: .32; }
 .sx-map-land { fill: #91b5a3; stroke: #bbceb4; stroke-width: .52; }
 .sx-map-connection {

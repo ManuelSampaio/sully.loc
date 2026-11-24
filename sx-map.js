@@ -22,7 +22,7 @@ function globeMarkup(gradientId, styleClass, viewBox, showRoute = false) {
 let assets;
 function globeAssets() {
   assets ||= Promise.all([
-    import('./sx-globe.js?rev=globo-regional'),
+    import('./sx-globe.js?rev=globo-interativo'),
     fetch('./sx-globe-land.json?rev=globo-v2').then(response => {
       if (!response.ok) throw new Error('Mapa indisponível');
       return response.json();
@@ -64,20 +64,84 @@ export function createMapDialog(refreshOwn) {
     <button type="button" class="secondary sx-map-close">Fechar</button></div>
     <p class="sx-map-distance" role="status"></p>
     <p class="sx-map-measure" hidden>Distância em linha reta</p>
-    ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380', true)}
+    <div class="sx-map-stage" hidden>
+      ${globeMarkup('sx-globe-ocean','sx-map-preview','100 8 440 380', true)}
+      <div class="sx-map-controls" role="group" aria-label="Controlos do globo">
+        <button type="button" aria-label="Reduzir" class="sx-map-out">−</button>
+        <button type="button" aria-label="Ampliar" class="sx-map-in">+</button>
+        <button type="button" class="sx-map-fit" disabled>Centrar nos dois</button>
+      </div>
+    </div>
     <ul class="sx-map-legend" aria-label="Posições"></ul>
     <button type="button" class="secondary sx-map-refresh">Atualizar a minha localização</button>
     <p class="sx-map-feedback" role="status"></p>
     <p class="footnote">Posições aproximadas. Cada posição atualiza quando a pessoa está com o Sully aberto.</p>`;
   document.body.append(dialog);
   const q = value => dialog.querySelector(value);
-  const image = q('svg');
+  const stage = q('.sx-map-stage');
+  const image = q('.sx-map-preview');
+  const fit = q('.sx-map-fit');
+  image.removeAttribute('aria-hidden');
+  image.setAttribute('tabindex', '0');
+  image.setAttribute('role', 'group');
+  image.setAttribute('aria-label', 'Globo interativo. Usa as setas para girar e mais ou menos para mudar o zoom.');
   const distance = q('.sx-map-distance');
   const measure = q('.sx-map-measure');
   const legend = q('.sx-map-legend');
   const refresh = q('.sx-map-refresh');
   const feedback = q('.sx-map-feedback');
   let globe, loading, failed = false, previousLegend, latest;
+  const pointers = new Map();
+  const zoomStep = 1.35;
+  q('.sx-map-in').onclick = () => globe?.move(0, 0, zoomStep);
+  q('.sx-map-out').onclick = () => globe?.move(0, 0, 1 / zoomStep);
+  fit.onclick = () => { if (latest?.current) globe?.focusPair(); };
+  image.addEventListener('pointerdown', event => {
+    if (!globe || event.button !== 0 || pointers.size >= 2) return;
+    image.setPointerCapture(event.pointerId);
+    pointers.set(event.pointerId, [event.clientX, event.clientY]);
+    image.classList.add('sx-map-dragging');
+  });
+  image.addEventListener('pointermove', event => {
+    const start = pointers.get(event.pointerId);
+    if (!start) return;
+    const end = [event.clientX, event.clientY];
+    const [dx, dy] = end.map((value, i) => value - start[i]);
+    if (!dx && !dy) return;
+    pointers.set(event.pointerId, end);
+    const other = [...pointers.entries()].find(([id]) => id !== event.pointerId)?.[1];
+    const box = image.getBoundingClientRect();
+    const units = 1 / Math.min(box.width / 440, box.height / 380);
+    if (!Number.isFinite(units)) return;
+    if (other) {
+      const before = Math.hypot(start[0] - other[0], start[1] - other[1]);
+      const after = Math.hypot(end[0] - other[0], end[1] - other[1]);
+      globe.move(dx * units / 2, dy * units / 2, after / Math.max(1, before));
+    } else {
+      globe.move(dx * units, dy * units);
+    }
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    image.addEventListener(type, event => {
+      pointers.delete(event.pointerId);
+      if (!pointers.size) image.classList.remove('sx-map-dragging');
+    });
+  }
+  image.addEventListener('wheel', event => {
+    if (!globe || !event.deltaY) return;
+    event.preventDefault();
+    const delta = Math.sign(event.deltaY);
+    globe.move(0, 0, Math.exp(-delta * Math.min(.48, event.deltaMode ? .17 : Math.abs(event.deltaY) * .0025)));
+  }, { passive: false });
+  image.addEventListener('keydown', event => {
+    const movement = {
+      ArrowLeft: [32, 0], ArrowRight: [-32, 0], ArrowUp: [0, 32], ArrowDown: [0, -32],
+      '+': [0, 0, zoomStep], '=': [0, 0, zoomStep], '-': [0, 0, 1 / zoomStep]
+    };
+    if (!globe || !Object.hasOwn(movement, event.key)) return;
+    event.preventDefault();
+    globe.move(...movement[event.key]);
+  });
 
   async function loadGlobe() {
     if (globe || loading) return;
@@ -117,6 +181,8 @@ export function createMapDialog(refreshOwn) {
       }
     }
     measure.hidden = !current;
+    stage.hidden = !globe;
+    fit.disabled = !current;
     image.toggleAttribute('hidden',!globe);
     if (!current || !globe) {
       globe?.showIdle();
@@ -127,7 +193,12 @@ export function createMapDialog(refreshOwn) {
     globe.show(own, other);
   }
 
-  dialog.addEventListener('close',() => { latest = undefined; globe?.stop(); });
+  dialog.addEventListener('close', () => {
+    latest = undefined;
+    pointers.clear();
+    image.classList.remove('sx-map-dragging');
+    globe?.stop();
+  });
   q('.sx-map-close').onclick = () => dialog.close();
   refresh.onclick = async () => {
     refresh.dataset.sxUpdating = 'true';

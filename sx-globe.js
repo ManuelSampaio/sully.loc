@@ -4,6 +4,8 @@ const rad = Math.PI/180;
 const sphere = {type:'Sphere'};
 const grid = geoGraticule10();
 const worldScale = 166;
+const maxScale = 4600;
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const wrap = degrees => ((degrees+540)%360)-180;
 
 export function globeCenter(a,b) {
@@ -28,7 +30,8 @@ export function createGlobe(svg, land, { regional = false } = {}) {
   const trace = svg.querySelector('.sx-map-trace');
   const dots = svg.querySelectorAll('.sx-map-dot');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
-  let center, scale = worldScale, target, frame, idle = false;
+  let center, scale = worldScale, target, frame, points;
+  let idle = false, manual = false;
 
   function hideRoute() {
     if (route) {
@@ -36,26 +39,32 @@ export function createGlobe(svg, land, { regional = false } = {}) {
     }
     dots.forEach(dot => dot.setAttribute('hidden', ''));
   }
-  function paint(camera, zoom, points) {
+  function paint(camera, zoom, locations) {
     center = camera;
     scale = zoom;
     projection.rotate([-camera[0], -camera[1]]).scale(zoom);
     water.setAttribute('d', path(sphere) || '');
     graticule.setAttribute('d', path(grid) || '');
     landPath.setAttribute('d', path(land) || '');
-    if (!points) return;
+    if (!locations) return;
 
-    const [a, b] = points.map(projection);
-    if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 17) {
+    const visible = locations.map(point => geoInterpolate(camera, point).distance <= Math.PI / 2 + 1e-8);
+    const [a, b] = locations.map(projection);
+    if (visible.every(Boolean) && Math.hypot(b[0] - a[0], b[1] - a[1]) < 17) {
       const offset = a[0] <= b[0] ? 7 : -7;
       a[0] -= offset;
       b[0] += offset;
     }
     for (const [index, point] of [a, b].entries()) {
       dots[index].setAttribute('transform', `translate(${point.join(' ')})`);
-      dots[index].removeAttribute('hidden');
+      dots[index].toggleAttribute('hidden', !visible[index]);
     }
     if (!route) return;
+    const inside = ([x, y]) => x >= 100 && x <= 540 && y >= 8 && y <= 388;
+    if (!visible.every(Boolean) || ![a, b].some(inside)) {
+      route.setAttribute('hidden', '');
+      return;
+    }
     const dx = b[0] - a[0], dy = b[1] - a[1];
     const bend = Math.min(.34, 42 / Math.hypot(dx, dy));
     const control = [(a[0] + b[0]) / 2 - dy * bend, (a[1] + b[1]) / 2 + dx * bend];
@@ -64,25 +73,24 @@ export function createGlobe(svg, land, { regional = false } = {}) {
     trace.setAttribute('d', curve);
     route.removeAttribute('hidden');
   }
-  function stop() {
-    if (frame !== undefined) cancelAnimationFrame(frame);
-    center = target = frame = undefined;
-    scale = worldScale;
-    idle = false;
-    hideRoute();
-  }
-  function show(a, b) {
-    idle = false;
-    const points = [a, b].map(point => [point.lngE2 / 100, point.latE2 / 100]);
-    const key = points.flat().join(',');
-    if (target === key) return;
+  function cancelFlight() {
     if (frame !== undefined) cancelAnimationFrame(frame);
     frame = undefined;
-    target = key;
+  }
+  function stop() {
+    cancelFlight();
+    center = target = points = undefined;
+    scale = worldScale;
+    idle = manual = false;
+    hideRoute();
+  }
+  function focusPair() {
+    cancelFlight();
+    manual = false;
     const to = globeCenter(...points);
     const separation = Math.sin(geoInterpolate(...points).distance / 2);
-    // Keep both markers inside the viewBox even for points on opposite sides of Earth.
-    const zoom = regional ? Math.max(worldScale, Math.min(1060, 144 / separation)) : worldScale;
+    // Leave room for both markers even when the locations are on opposite sides of Earth.
+    const zoom = regional ? clamp(137 / separation, worldScale, 3900) : worldScale;
     if (!regional || motion.matches) {
       paint(to, zoom, points);
       return;
@@ -112,6 +120,26 @@ export function createGlobe(svg, land, { regional = false } = {}) {
     };
     frame = requestAnimationFrame(spin);
   }
+  function show(a, b) {
+    idle = false;
+    const locations = [a, b].map(point => [point.lngE2 / 100, point.latE2 / 100]);
+    const key = locations.flat().join(',');
+    if (target === key) return;
+    target = key;
+    points = locations;
+    if (manual) paint(center, scale, points);
+    else focusPair();
+  }
+  function move(dx, dy, zoomFactor = 1) {
+    if (!regional) return;
+    cancelFlight();
+    manual = true;
+    const [longitude, latitude] = center || [15, 0];
+    const rate = 1 / (scale * rad);
+    const longitudeRate = rate / Math.max(.3, Math.cos(latitude * rad));
+    paint([wrap(longitude - dx * longitudeRate), clamp(latitude + dy * rate, -89.9, 89.9)],
+      clamp(scale * zoomFactor, worldScale, maxScale), points);
+  }
   function showIdle() {
     if (idle) return;
     stop();
@@ -119,5 +147,5 @@ export function createGlobe(svg, land, { regional = false } = {}) {
     center = undefined;
     idle = true;
   }
-  return {show, stop, showIdle};
+  return {show, stop, showIdle, move, focusPair};
 }
